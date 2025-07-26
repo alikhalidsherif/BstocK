@@ -1,0 +1,43 @@
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+ios/
+  .symlinks/
+  Pods/
+  Flutter/ephemeral/
+  Flutter/dev/
+  Flutter/build/
+  DerivedData/
+  Runner/GeneratedPluginRegistrant.h
+  Runner/GeneratedPluginRegistrant.m
+
+# Android
+android/
+  .gradle/
+  app/build/
+  local.properties
+
+# Web
+web/
+  .dart_tool/
+  .pub-cache/
+  build/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Python
+backend/venv/
+backend/app/__pycache__/
+backend/app/routers/__pycache__/
+
+# Docker
+.dockerignore 
