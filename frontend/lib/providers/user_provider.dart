@@ -4,7 +4,6 @@ import '../models/models.dart';
 
 class UserProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-  List<User> _users = [];
   bool _isLoading = false;
   String _searchQuery = '';
 
@@ -29,7 +28,6 @@ class UserProvider with ChangeNotifier {
       _allUsers = await _apiService.getUsers();
     } catch (e) {
       // Handle error appropriately
-      print(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -50,7 +48,6 @@ class UserProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print(e);
       // Optionally re-throw or show a message to the user
     }
   }
@@ -61,7 +58,6 @@ class UserProvider with ChangeNotifier {
       _allUsers.removeWhere((user) => user.id == userId);
       notifyListeners();
     } catch (e) {
-      print(e);
       // Optionally re-throw or show a message to the user
     }
   }
@@ -80,7 +76,6 @@ class UserProvider with ChangeNotifier {
       _allUsers.add(newUser);
       notifyListeners();
     } catch (e) {
-      print(e);
       rethrow;
     }
   }

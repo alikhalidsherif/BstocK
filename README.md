@@ -38,12 +38,26 @@ A stock management application built with Flutter and FastAPI.
     docker-compose up --build
     ```
 
+## Database Migrations
+
+If you are updating an existing database, you will need to apply the following migrations:
+
+```sql
+ALTER TABLE change_requests ADD COLUMN new_product_name VARCHAR;
+ALTER TABLE change_requests ADD COLUMN new_product_barcode VARCHAR;
+ALTER TABLE change_requests ADD COLUMN new_product_price FLOAT;
+ALTER TABLE change_requests ADD COLUMN new_product_quantity INTEGER;
+ALTER TABLE change_requests ADD COLUMN new_product_category VARCHAR;
+ALTER TABLE change_requests ALTER COLUMN product_id DROP NOT NULL;
+
+ALTER TABLE change_history ADD COLUMN buyer_name VARCHAR;
+ALTER TABLE change_history ADD COLUMN payment_status VARCHAR;
+```
+
 ### Frontend
 
 1.  Navigate to the `frontend` directory.
-2.  Download the Roboto font from [here](https://www.fontsquirrel.com/fonts/roboto).
-3.  Unzip the downloaded file and copy all of the `.ttf` files to the `frontend/fonts` directory.
-4.  Run the following command to start the frontend application:
+2.  Run the following command to start the frontend application:
 
     ```
     flutter run -d chrome

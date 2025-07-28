@@ -1,11 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // We'll run the backend on localhost port 8000
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  String get _baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000/api';
+    } else {
+      return 'http://10.0.2.2:8000/api';
+    }
+  }
+  String get baseUrl => _baseUrl;
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -60,7 +67,7 @@ class ApiService {
     }
   }
 
-  Future<Product> getProductByBarcode(String barcode) async {
+  Future<Product?> getProductByBarcode(String barcode) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/products/$barcode'),
       headers: await _getHeaders(),
@@ -68,6 +75,8 @@ class ApiService {
 
     if (response.statusCode == 200) {
       return Product.fromJson(jsonDecode(response.body));
+    } else if (response.statusCode == 404) {
+      return null; // Explicitly return null when product is not found
     } else {
       throw Exception('Failed to load product');
     }
@@ -79,6 +88,11 @@ class ApiService {
     int? quantity,
     String? buyerName,
     String? paymentStatus,
+    String? newProductName,
+    String? newProductBarcode,
+    double? newProductPrice,
+    int? newProductQuantity,
+    String? newProductCategory,
   }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/inventory/request'),
@@ -89,11 +103,15 @@ class ApiService {
         'quantity_change': quantity,
         'buyer_name': buyerName,
         'payment_status': paymentStatus,
+        'new_product_name': newProductName,
+        'new_product_barcode': newProductBarcode,
+        'new_product_price': newProductPrice,
+        'new_product_quantity': newProductQuantity,
+        'new_product_category': newProductCategory,
       }),
     );
 
     if (response.statusCode != 200) {
-      // The backend uses 200 for success on this endpoint
       throw Exception('Failed to submit change request.');
     }
   }
@@ -188,7 +206,35 @@ class ApiService {
       final List<dynamic> data = jsonDecode(response.body);
       return data.map((item) => ChangeHistory.fromJson(item)).toList();
     } else {
-      throw Exception('Failed to load change history');
+      throw Exception('Failed to load history');
+    }
+  }
+
+  Future<List<ChangeHistory>> getSalesHistory() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/history/sales'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => ChangeHistory.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to load sales history');
+    }
+  }
+
+  Future<Map<String, dynamic>> importProductsFromExcel(String filePath) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/products/import'));
+    request.headers.addAll(await _getHeaders());
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    
+    var response = await request.send();
+    final responseData = await response.stream.bytesToString();
+    
+    if (response.statusCode == 200) {
+      return jsonDecode(responseData);
+    } else {
+      throw Exception('Failed to import Excel file: $responseData');
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:bstock_app/models/models.dart';
+import 'package:bstock_app/providers/change_request_provider.dart';
 
 class AddNewProductScreen extends StatefulWidget {
   const AddNewProductScreen({super.key});
@@ -46,26 +47,24 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
       return;
     }
 
-    final newProductData = Product(
-      id: 0, // Not used, but required by model
-      barcode: _barcodeController.text,
-      name: _nameController.text,
-      price: double.parse(_priceController.text),
-      quantity: int.parse(_quantityController.text),
-      category: _categoryController.text,
-    );
-
     try {
-      await Provider.of<ProductProvider>(context, listen: false).createNewProduct(newProductData);
+      await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
+        action: ChangeRequestAction.create,
+        newProductName: _nameController.text,
+        newProductBarcode: _barcodeController.text,
+        newProductPrice: double.parse(_priceController.text),
+        newProductQuantity: int.parse(_quantityController.text),
+        newProductCategory: _categoryController.text,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product created successfully!')),
+        const SnackBar(content: Text('Product creation request submitted!')),
       );
       context.pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+        SnackBar(content: Text('Failed to submit request: $e')),
       );
     } finally {
       if (mounted) {
@@ -75,8 +74,9 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
   }
 
   Future<bool> _isBarcodeUnique(String barcode) async {
-    final existingProduct = await Provider.of<ProductProvider>(context, listen: false).fetchProductByBarcode(barcode);
-    return existingProduct == null;
+    final product = await Provider.of<ProductProvider>(context, listen: false)
+        .fetchProductByBarcode(barcode);
+    return product == null;
   }
 
   @override

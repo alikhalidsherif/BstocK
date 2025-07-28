@@ -5,31 +5,30 @@ import 'package:flutter/foundation.dart';
 
 enum SortType {
   none,
-  name_az,
-  name_za,
-  quantity_low_high,
-  quantity_high_low,
-  barcode_az,
-  barcode_za,
+  nameAz,
+  nameZa,
+  quantityLowHigh,
+  quantityHighLow,
+  barcodeAz,
+  barcodeZa,
 }
 
 extension SortTypeName on SortType {
   String get name {
     switch (this) {
-      case SortType.name_az:
+      case SortType.nameAz:
         return 'Name A-Z';
-      case SortType.name_za:
+      case SortType.nameZa:
         return 'Name Z-A';
-      case SortType.quantity_low_high:
+      case SortType.quantityLowHigh:
         return 'Quantity Low-High';
-      case SortType.quantity_high_low:
+      case SortType.quantityHighLow:
         return 'Quantity High-Low';
-      case SortType.barcode_az:
+      case SortType.barcodeAz:
         return 'Barcode A-Z';
-      case SortType.barcode_za:
+      case SortType.barcodeZa:
         return 'Barcode Z-A';
       case SortType.none:
-      default:
         return 'None';
     }
   }
@@ -59,9 +58,15 @@ class ProductProvider with ChangeNotifier {
   Future<void> fetchCategories() async {
     try {
       _categories = await _apiService.getCategories();
+      // Provide default categories if none exist
+      if (_categories.isEmpty) {
+        _categories = ['Electronics', 'Clothing', 'Books', 'Food', 'Tools', 'Other'];
+      }
       notifyListeners();
     } catch (e) {
-      // Handle error
+      // Provide default categories on error
+      _categories = ['Electronics', 'Clothing', 'Books', 'Food', 'Tools', 'Other'];
+      notifyListeners();
     }
   }
 
@@ -73,7 +78,6 @@ class ProductProvider with ChangeNotifier {
       _applyFiltersAndSort();
     } catch (e) {
       // Handle error, maybe set an error state
-      print(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -116,22 +120,22 @@ class ProductProvider with ChangeNotifier {
 
     // Apply sort
     switch (_sortType) {
-      case SortType.name_az:
+      case SortType.nameAz:
         filtered.sort((a, b) => a.name.compareTo(b.name));
         break;
-      case SortType.name_za:
+      case SortType.nameZa:
         filtered.sort((a, b) => b.name.compareTo(a.name));
         break;
-      case SortType.quantity_low_high:
+      case SortType.quantityLowHigh:
         filtered.sort((a, b) => a.quantity.compareTo(b.quantity));
         break;
-      case SortType.quantity_high_low:
+      case SortType.quantityHighLow:
         filtered.sort((a, b) => b.quantity.compareTo(a.quantity));
         break;
-      case SortType.barcode_az:
+      case SortType.barcodeAz:
         filtered.sort((a, b) => a.barcode.compareTo(b.barcode));
         break;
-      case SortType.barcode_za:
+      case SortType.barcodeZa:
         filtered.sort((a, b) => b.barcode.compareTo(a.barcode));
         break;
       case SortType.none:
@@ -178,8 +182,7 @@ class ProductProvider with ChangeNotifier {
       _applyFiltersAndSort();
       notifyListeners();
     } catch (e) {
-      print(e);
-      throw e;
+      rethrow;
     }
   }
 

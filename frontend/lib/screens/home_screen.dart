@@ -5,10 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/change_request_provider.dart'; // Added import for ChangeRequestProvider
-import '../api/api_service.dart';
+import '../providers/history_provider.dart';
 import '../models/models.dart';
-import '../widgets/reusable_widgets.dart';
-import 'package:bstock_app/widgets/app_drawer.dart';
 import 'package:bstock_app/widgets/product_search_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,7 +17,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? _selectedCategory;
   @override
   void initState() {
     super.initState();
@@ -27,11 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
     // We use addPostFrameCallback to ensure the context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ProductProvider>(context, listen: false).fetchProducts();
+      Provider.of<HistoryProvider>(context, listen: false).fetchHistory();
     });
   }
 
   Future<void> _showInquireDialog() async {
-    final Product? selectedProduct = await showProductSearchDialog(context);
+    // Avoid using context across async gaps.
+    if (!mounted) return;
+    final selectedProduct = await showProductSearchDialog(context);
 
     if (selectedProduct != null && mounted) {
       context.go('/product/${selectedProduct.barcode}');
@@ -40,91 +40,116 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _showStockChangeDialog(BuildContext context,
       {required ChangeRequestAction action}) async {
-    final Product? selectedProduct = await showProductSearchDialog(context);
+    // Avoid using context across async gaps.
+    if (!mounted) return;
+    final selectedProduct = await showProductSearchDialog(context);
 
     if (selectedProduct == null) return;
 
+    // The rest of the method needs to be careful with context as well.
     final product = selectedProduct;
+    if (action == ChangeRequestAction.sell && product.quantity == 0) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No stock available to sell'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     final quantityController = TextEditingController();
     final buyerController = TextEditingController();
-    String paymentStatus = 'unpaid'; // Default value
+    bool isPaid = false;
 
-    await showDialog(
+    // The dialog will now return a boolean indicating success or failure.
+    final bool? success = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      barrierDismissible: false, // Prevent closing while request is in flight
+      builder: (dialogContext) {
+        bool isLoading = false;
+        String? errorText;
+
         return StatefulBuilder(
-          // To update payment status dropdown
           builder: (context, setState) {
             return AlertDialog(
               title: Text(product.name),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Current Quantity: ${product.quantity}'),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: quantityController,
-                    decoration:
-                        InputDecoration(labelText: 'Quantity to ${action.name}'),
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                  ),
-                  if (action == ChangeRequestAction.sell) ...[
-                    TextField(
-                      controller: buyerController,
-                      decoration: const InputDecoration(labelText: 'Buyer Name (Optional)'),
-                    ),
-                    DropdownButton<String>(
-                      value: paymentStatus,
-                      items: const [
-                        DropdownMenuItem(value: 'unpaid', child: Text('Unpaid')),
-                        DropdownMenuItem(value: 'paid', child: Text('Paid')),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    if (isLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else ...[
+                      Text('Current Quantity: ${product.quantity}'),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: quantityController,
+                        decoration: InputDecoration(
+                          labelText: 'Quantity',
+                          errorText: errorText,
+                          hintText: 'Enter a positive number',
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          setState(() => errorText = null); // Clear error on input
+                        },
+                        autofocus: true,
+                      ),
+                      if (action == ChangeRequestAction.sell) ...[
+                        TextField(
+                          controller: buyerController,
+                          decoration: const InputDecoration(labelText: 'Buyer Name (Optional)'),
+                        ),
+                        CheckboxListTile(
+                          title: const Text('Paid'),
+                          value: isPaid,
+                          onChanged: (value) {
+                            if (value != null) setState(() => isPaid = value);
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                        ),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            paymentStatus = value;
-                          });
-                        }
-                      },
-                    ),
-                  ]
-                ],
+                    ],
+                  ],
+                ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
                 TextButton(
+                  onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final quantity = int.tryParse(quantityController.text);
+                          if (quantity == null || quantity <= 0) {
+                            setState(() => errorText = 'Please enter a valid quantity');
+                            return;
+                          }
+                          if (action == ChangeRequestAction.sell && quantity > product.quantity) {
+                            setState(() => errorText = 'Not enough stock');
+                            return;
+                          }
+
+                          setState(() {
+                            isLoading = true;
+                            errorText = null;
+                          });
+
+                          try {
+                            await Provider.of<ChangeRequestProvider>(context, listen: false)
+                                .submitRequest(
+                              barcode: product.barcode,
+                              action: action,
+                              quantity: quantity,
+                              buyerName: action == ChangeRequestAction.sell ? buyerController.text : null,
+                              paymentStatus: action == ChangeRequestAction.sell ? (isPaid ? 'paid' : 'unpaid') : null,
+                            );
+                            if (mounted) Navigator.of(dialogContext).pop(true);
+                          } catch (e) {
+                            if (mounted) Navigator.of(dialogContext).pop(false);
+                          }
+                        },
                   child: const Text('Submit Request'),
-                  onPressed: () async {
-                    final quantity = int.tryParse(quantityController.text);
-                    if (quantity != null && quantity > 0) {
-                      try {
-                        await Provider.of<ChangeRequestProvider>(context,
-                                listen: false)
-                            .submitRequest(
-                          barcode: product.barcode,
-                          action: action,
-                          quantity: quantity,
-                          buyerName: action == ChangeRequestAction.sell ? buyerController.text : null,
-                          paymentStatus: action == ChangeRequestAction.sell ? paymentStatus : null,
-                        );
-                        if (mounted) {
-                          Navigator.of(context).pop(); // Close dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Request submitted successfully!')),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to submit: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
-                    }
-                  },
                 ),
               ],
             );
@@ -132,37 +157,48 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+
+    // Show snackbar after the dialog is closed, based on the result.
+    if (success != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Request submitted successfully!' : 'Failed to submit request.'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final bool isAdmin = authProvider.user?.role == UserRole.admin;
+    final historyProvider = Provider.of<HistoryProvider>(context);
+    final hasUnpaid = historyProvider.history.any((h) => h.paymentStatus == 'unpaid');
 
-    return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome, ${authProvider.user?.username ?? 'User'}!',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 24),
-                _buildQuickActionsGrid(context, isAdmin),
-                const SizedBox(height: 24),
-                Text(
-                  'Product Inquiry',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                _buildInquireCard(context),
-              ],
-            ),
+    // Content only; AppBar provided by ShellScreen
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome, ${authProvider.user?.username ?? 'User'}!',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 24),
+              _buildQuickActionsGrid(context, isAdmin),
+              const SizedBox(height: 24),
+              Text(
+                'Product Inquiry',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _buildInquireCard(context),
+            ],
           ),
         ),
       ),

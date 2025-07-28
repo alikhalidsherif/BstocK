@@ -68,6 +68,9 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                 case ChangeRequestAction.delete:
                   color = Colors.red;
                   break;
+                case ChangeRequestAction.markPaid:
+                  color = Colors.teal;
+                  break;
               }
 
               return Card(
@@ -89,9 +92,9 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                       if (request.newProductName != null) Text('New Name: ${request.newProductName}'),
                       if (request.newProductPrice != null) Text('New Price: \$${request.newProductPrice}'),
                       if (request.buyerName != null && request.buyerName!.isNotEmpty)
-                        Text('Buyer: ${request.buyerName!}'),
+                        Text('Buyer: ${request.buyerName}'),
                       if (request.paymentStatus != null)
-                        Text('Payment: ${request.paymentStatus!}'),
+                        Text('Payment: ${request.paymentStatus}'),
                     ],
                   ),
                   isThreeLine: true,
@@ -101,16 +104,16 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                       if (_isProcessing[request.id] ?? false)
                         const CircularProgressIndicator()
                       else ...[
-                        IconButton(
-                          icon: const Icon(Icons.check_circle, color: Colors.green),
+                      IconButton(
+                        icon: const Icon(Icons.check_circle, color: Colors.green),
                           onPressed: () => _handleRequest(() => provider.approveRequest(request.id), request.id),
-                          tooltip: 'Approve',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.cancel, color: Colors.red),
+                        tooltip: 'Approve',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red),
                           onPressed: () => _handleRequest(() => provider.rejectRequest(request.id), request.id),
-                          tooltip: 'Reject',
-                        ),
+                        tooltip: 'Reject',
+                      ),
                       ],
                     ],
                   ),

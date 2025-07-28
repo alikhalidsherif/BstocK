@@ -53,6 +53,13 @@ class ProductDetailScreen extends StatelessWidget {
   }
 
   void _showStockChangeDialog(BuildContext context, {required Product product, required ChangeRequestAction action}) {
+    // Prevent selling when no stock is available
+    if (action == ChangeRequestAction.sell && product.quantity == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No stock available to sell'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     showDialog(
       context: context,
       builder: (context) {
@@ -134,6 +141,7 @@ class _StockChangeDialogState extends State<StockChangeDialog> {
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _buyerController = TextEditingController();
   bool _isLoading = false;
+  bool _isPaid = false; // Payment status for sell requests
 
   @override
   void dispose() {
@@ -150,6 +158,13 @@ class _StockChangeDialogState extends State<StockChangeDialog> {
       );
       return;
     }
+    // Prevent selling more than available stock
+    if (widget.action == ChangeRequestAction.sell && qty > widget.product.quantity) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot sell more than available stock'), backgroundColor: Colors.red)
+      );
+      return;
+    }
     final String? buyerName = widget.action == ChangeRequestAction.sell
         ? _buyerController.text
         : null;
@@ -160,6 +175,7 @@ class _StockChangeDialogState extends State<StockChangeDialog> {
         barcode: widget.product.barcode,
         quantity: qty,
         buyerName: buyerName,
+        paymentStatus: widget.action == ChangeRequestAction.sell ? (_isPaid ? 'paid' : 'unpaid') : null,
       );
       if (!mounted) return;
       if (success) {
@@ -196,11 +212,18 @@ class _StockChangeDialogState extends State<StockChangeDialog> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Quantity'),
           ),
-          if (widget.action == ChangeRequestAction.sell)
+          if (widget.action == ChangeRequestAction.sell) ...[
             TextField(
               controller: _buyerController,
-              decoration: const InputDecoration(labelText: 'Buyer Name'),
+              decoration: const InputDecoration(labelText: 'Buyer Name (Optional)'),
             ),
+            CheckboxListTile(
+              title: const Text('Paid'),
+              value: _isPaid,
+              onChanged: (v) { if (v != null) setState(() => _isPaid = v); },
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+          ],
         ],
       ),
       actions: [

@@ -29,8 +29,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/add-user'),
-        child: const Icon(Icons.add),
         tooltip: 'Add User',
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
@@ -116,8 +116,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<UserRole>>[
         const PopupMenuItem<UserRole>(
-          value: UserRole.clerk,
-          child: Text('Set as Clerk'),
+          value: UserRole.user,
+          child: Text('Set as User'),
         ),
         const PopupMenuItem<UserRole>(
           value: UserRole.admin,

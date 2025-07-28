@@ -35,6 +35,9 @@ def delete_user(db: Session, user: models.User):
 def get_product_by_barcode(db: Session, barcode: str):
     return db.query(models.Product).filter(models.Product.barcode == barcode).first()
 
+def get_product_by_id(db: Session, product_id: int):
+    return db.query(models.Product).filter(models.Product.id == product_id).first()
+
 def get_products(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Product).offset(skip).limit(limit).all()
 
@@ -69,7 +72,12 @@ def create_change_request(db: Session, request: schemas.ChangeRequestCreate, use
         quantity_change=request.quantity_change,
         buyer_name=request.buyer_name,
         payment_status=request.payment_status,
-        requester_id=user_id
+        requester_id=user_id,
+        new_product_name=request.new_product_name,
+        new_product_barcode=request.new_product_barcode,
+        new_product_price=request.new_product_price,
+        new_product_quantity=request.new_product_quantity,
+        new_product_category=request.new_product_category,
     )
     db.add(db_request)
     db.commit()
@@ -102,15 +110,36 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
         if db_product.quantity < db_request.quantity_change:
             raise ValueError("Not enough stock to sell.")
         db_product.quantity -= db_request.quantity_change
+    elif db_request.action == models.ChangeRequestAction.create:
+        new_product_schema = schemas.ProductCreate(
+            name=db_request.new_product_name,
+            barcode=db_request.new_product_barcode,
+            price=db_request.new_product_price,
+            quantity=db_request.new_product_quantity,
+            category=db_request.new_product_category,
+        )
+        db_product = create_product(db, new_product_schema)
+        db.commit()
+        db.refresh(db_product)
+    elif db_request.action == models.ChangeRequestAction.delete:
+        delete_product(db, db_product)
+    elif db_request.action == models.ChangeRequestAction.mark_paid:
+        history_entry = db.query(models.ChangeHistory).filter(models.ChangeHistory.product_id == db_product.id, models.ChangeHistory.payment_status == models.PaymentStatus.unpaid).first()
+        if history_entry:
+            history_entry.payment_status = models.PaymentStatus.paid
+            db.commit()
+            db.refresh(history_entry)
 
     # Log to history
     history_entry = models.ChangeHistory(
-        product_id=db_request.product_id,
+        product_id=db_product.id,
         quantity_change=db_request.quantity_change,
         action=db_request.action,
         status=models.ChangeRequestStatus.approved,
         requester_id=db_request.requester_id,
-        reviewer_id=reviewer_id
+        reviewer_id=reviewer_id,
+        buyer_name=db_request.buyer_name,
+        payment_status=db_request.payment_status
     )
     db.add(history_entry)
 
@@ -132,7 +161,9 @@ def reject_change_request(db: Session, request_id: int, reviewer_id: int):
         action=db_request.action,
         status=models.ChangeRequestStatus.rejected,
         requester_id=db_request.requester_id,
-        reviewer_id=reviewer_id
+        reviewer_id=reviewer_id,
+        buyer_name=db_request.buyer_name,
+        payment_status=db_request.payment_status
     )
     db.add(history_entry)
 

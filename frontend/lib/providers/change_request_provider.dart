@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api_service.dart';
 import '../models/models.dart';
-import '../providers/auth_provider.dart';
 
 class ChangeRequestProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -17,7 +16,7 @@ class ChangeRequestProvider with ChangeNotifier {
     try {
       _requests = await _apiService.getPendingRequests();
     } catch (e) {
-      print(e); // Handle error appropriately
+      // Handle error appropriately
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -31,7 +30,6 @@ class ChangeRequestProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print(e);
       return false;
     }
   }
@@ -43,7 +41,6 @@ class ChangeRequestProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print(e);
       return false;
     }
   }
@@ -54,6 +51,11 @@ class ChangeRequestProvider with ChangeNotifier {
     int? quantity,
     String? buyerName,
     String? paymentStatus,
+    String? newProductName,
+    String? newProductBarcode,
+    double? newProductPrice,
+    int? newProductQuantity,
+    String? newProductCategory,
   }) async {
     try {
       await _apiService.submitChangeRequest(
@@ -62,13 +64,16 @@ class ChangeRequestProvider with ChangeNotifier {
         quantity: quantity,
         buyerName: buyerName,
         paymentStatus: paymentStatus,
+        newProductName: newProductName,
+        newProductBarcode: newProductBarcode,
+        newProductPrice: newProductPrice,
+        newProductQuantity: newProductQuantity,
+        newProductCategory: newProductCategory,
       );
-      // Refresh the pending requests list so the UI updates.
       await fetchPendingRequests();
       return true;
     } catch (e) {
-      print(e);
-      return false;
+      rethrow; // Rethrow the exception to be caught by the UI
     }
   }
 } 

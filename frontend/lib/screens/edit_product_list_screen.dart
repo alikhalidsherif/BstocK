@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/product_provider.dart';
-import '../models/models.dart';
 
 class EditProductListScreen extends StatefulWidget {
   const EditProductListScreen({super.key});

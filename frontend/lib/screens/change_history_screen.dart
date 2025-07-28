@@ -2,9 +2,24 @@ import 'package:bstock_app/providers/history_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:bstock_app/models/models.dart';
 
-class ChangeHistoryScreen extends StatelessWidget {
+class ChangeHistoryScreen extends StatefulWidget {
   const ChangeHistoryScreen({super.key});
+
+  @override
+  State<ChangeHistoryScreen> createState() => _ChangeHistoryScreenState();
+}
+
+class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch history when the screen is initialized.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<HistoryProvider>(context, listen: false).fetchHistory();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +29,7 @@ class ChangeHistoryScreen extends StatelessWidget {
       ),
       body: Consumer<HistoryProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
+          if (provider.isLoading && provider.history.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
           if (provider.history.isEmpty) {
@@ -22,41 +37,86 @@ class ChangeHistoryScreen extends StatelessWidget {
               child: Text('No history found.'),
             );
           }
-          return ListView.builder(
-            itemCount: provider.history.length,
-            itemBuilder: (context, index) {
-              final entry = provider.history[index];
-              final actionText = entry.action.name.toUpperCase();
-              final statusText = entry.status.name.toUpperCase();
-              final color = entry.status.name == 'approved'
-                  ? (entry.action.name == 'add' ? Colors.green : Colors.blue)
-                  : Colors.red;
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchHistory(),
+            child: ListView.builder(
+              itemCount: provider.history.length,
+              itemBuilder: (context, index) {
+                final entry = provider.history[index];
+                final actionText = entry.action.name.toUpperCase();
+                final statusText = entry.status.name.toUpperCase();
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: color,
-                    child: Icon(
-                      entry.action.name == 'add' ? Icons.add : Icons.remove,
-                      color: Colors.white,
+                final Color color;
+                final IconData icon;
+
+                switch (entry.action) {
+                  case ChangeRequestAction.add:
+                    color = Colors.green;
+                    icon = Icons.add;
+                    break;
+                  case ChangeRequestAction.sell:
+                    color = Colors.orange;
+                    icon = Icons.remove;
+                    break;
+                  case ChangeRequestAction.create:
+                    color = Colors.blue;
+                    icon = Icons.add_circle_outline;
+                    break;
+                  case ChangeRequestAction.delete:
+                    color = Colors.red;
+                    icon = Icons.delete_forever;
+                    break;
+                  case ChangeRequestAction.markPaid:
+                    color = Colors.teal;
+                    icon = Icons.attach_money;
+                    break;
+                  case ChangeRequestAction.update:
+                     color = Colors.purple;
+                     icon = Icons.edit;
+                     break;
+                  default:
+                    color = Colors.grey;
+                    icon = Icons.help_outline;
+                }
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: color,
+                      child: Icon(icon, color: Colors.white),
                     ),
+                    title: Text('$actionText - ${entry.product.name}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Qty: ${entry.quantityChange ?? 'N/A'}'),
+                        if (entry.buyerName != null && entry.buyerName!.isNotEmpty)
+                          Text('Buyer: ${entry.buyerName}'),
+                        if (entry.paymentStatus != null)
+                          Text('Payment: ${entry.paymentStatus}'),
+                        Text('By: ${entry.requester.username}'),
+                        Text('Reviewed by: ${entry.reviewer.username}'),
+                      ],
+                    ),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          statusText,
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                        ),
+                        Text(DateFormat.yMd().add_jm().format(entry.timestamp.toLocal())),
+                      ],
+                    ),
+                    isThreeLine: true,
                   ),
-                  title: Text('$actionText ${entry.quantityChange} x ${entry.product.name}'),
-                  subtitle: Text(
-                      'By: ${entry.requester.username}\nReviewed by: ${entry.reviewer.username}\nDate: ${DateFormat.yMd().add_jm().format(entry.timestamp.toLocal())}'),
-                  trailing: Text(
-                    statusText,
-                    style: TextStyle(
-                        color: color, fontWeight: FontWeight.bold),
-                  ),
-                  isThreeLine: true,
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
     );
   }
-} 
+}

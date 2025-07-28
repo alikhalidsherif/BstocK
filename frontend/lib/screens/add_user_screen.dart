@@ -15,7 +15,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  UserRole _selectedRole = UserRole.clerk;
+  UserRole _selectedRole = UserRole.user;
   bool _isLoading = false;
 
   Future<void> _submitUser() async {

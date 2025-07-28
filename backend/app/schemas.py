@@ -49,40 +49,52 @@ class Product(ProductBase):
 
 # Change Request Schemas
 class ChangeRequestBase(BaseModel):
-    product_id: int
+    product_id: Optional[int] = None
     action: ChangeRequestAction
-    quantity_change: int
+    quantity_change: Optional[int] = None
 
 # This schema is used by the API when the user scans a barcode and wants to submit a request.
 class ChangeRequestSubmit(BaseModel):
-    barcode: str
+    barcode: Optional[str] = None
     action: ChangeRequestAction
-    quantity_change: int
+    quantity_change: Optional[int] = None
     buyer_name: Optional[str] = None
     payment_status: Optional[str] = None
+    new_product_name: Optional[str] = None
+    new_product_barcode: Optional[str] = None
+    new_product_price: Optional[float] = None
+    new_product_quantity: Optional[int] = None
+    new_product_category: Optional[str] = None
 
 class ChangeRequestCreate(ChangeRequestBase):
     """Internal schema used when we already resolved the product_id."""
     buyer_name: Optional[str] = None
     payment_status: Optional[str] = None
+    new_product_name: Optional[str] = None
+    new_product_barcode: Optional[str] = None
+    new_product_price: Optional[float] = None
+    new_product_quantity: Optional[int] = None
+    new_product_category: Optional[str] = None
 
 class ChangeRequest(ChangeRequestCreate):
     id: int
     requester: User
-    product: Product
+    product: Optional[Product] = None
 
     class Config:
         orm_mode = True
 
 class ChangeHistory(BaseModel):
     id: int
-    product: Product
-    quantity_change: int
+    product: Optional[Product] = None
+    quantity_change: Optional[int] = None
     action: ChangeRequestAction
     status: ChangeRequestStatus
     requester: User
     reviewer: User
     timestamp: datetime
+    buyer_name: Optional[str] = None
+    payment_status: Optional[PaymentStatus] = None
 
     class Config:
         orm_mode = True

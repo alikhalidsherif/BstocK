@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:bstock_app/models/models.dart';
+import 'package:bstock_app/providers/history_provider.dart';
 
 class ShellScreen extends StatelessWidget {
   final Widget child;
@@ -18,6 +19,19 @@ class ShellScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
+        actions: [
+          // Show unpaid badge on Home
+          if (title == 'Home' && isAdmin)
+            IconButton(
+              onPressed: () => context.push('/unpaid-requests'),
+              icon: Badge(
+                isLabelVisible: Provider.of<HistoryProvider>(context).history
+                    .any((h) => h.paymentStatus == 'unpaid'),
+                child: const Icon(Icons.payment),
+              ),
+              tooltip: 'Unpaid Transactions',
+            ),
+        ],
       ),
       drawer: const AppDrawer(),
       body: child,

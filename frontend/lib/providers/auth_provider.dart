@@ -3,11 +3,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_service.dart';
 import '../models/models.dart';
 
-enum AuthStatus { Uninitialized, Authenticated, Unauthenticated }
+enum AuthStatus { uninitialized, authenticated, unauthenticated }
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-  AuthStatus _status = AuthStatus.Uninitialized;
+  AuthStatus _status = AuthStatus.uninitialized;
   String? _token;
   User? _user;
 
@@ -27,15 +27,15 @@ class AuthProvider with ChangeNotifier {
       try {
         // Fetch user details if token exists
         _user = await _apiService.getCurrentUser();
-        _status = AuthStatus.Authenticated;
+        _status = AuthStatus.authenticated;
       } catch (e) {
         // Token is invalid or expired
         _token = null;
         _user = null;
-        _status = AuthStatus.Unauthenticated;
+        _status = AuthStatus.unauthenticated;
       }
     } else {
-      _status = AuthStatus.Unauthenticated;
+      _status = AuthStatus.unauthenticated;
     }
     notifyListeners();
   }
@@ -46,11 +46,11 @@ class AuthProvider with ChangeNotifier {
       _token = response['access_token'];
       // After login, fetch user details
       _user = await _apiService.getCurrentUser();
-      _status = AuthStatus.Authenticated;
+      _status = AuthStatus.authenticated;
       notifyListeners();
       return true;
     } catch (e) {
-      _status = AuthStatus.Unauthenticated;
+      _status = AuthStatus.unauthenticated;
       notifyListeners();
       return false;
     }
@@ -59,7 +59,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     _token = null;
     _user = null;
-    _status = AuthStatus.Unauthenticated;
+    _status = AuthStatus.unauthenticated;
     await _apiService.logout();
     notifyListeners();
   }

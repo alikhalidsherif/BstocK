@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
-from .routers import users, products, inventory, history
+from . import models, auth
+from .routers import users, inventory, products, history
 
 # This will create the database tables if they don't exist
 # on application startup. For production, you might want to handle
@@ -27,10 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include inventory, products, and history routers first to avoid prefix clash
+app.include_router(inventory.router)
+app.include_router(products.router)
+app.include_router(history.router)
+# Users router handles user endpoints (including /api/token and /api/users/*)
 app.include_router(users.router, prefix="/api", tags=["Users"])
-app.include_router(products.router, prefix="/api", tags=["Products"])
-app.include_router(inventory.router, prefix="/api", tags=["Inventory"])
-app.include_router(history.router, prefix="/api", tags=["History"])
 
 @app.get("/")
 def read_root():

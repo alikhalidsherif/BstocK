@@ -21,6 +21,7 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
   late TextEditingController _priceController;
   late TextEditingController _quantityController;
   late TextEditingController _categoryController;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -45,30 +46,42 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
   Future<void> _updateProduct() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final updatedProduct = Product(
-      id: widget.product.id,
-      barcode: _barcodeController.text,
-      name: _nameController.text,
-      price: double.parse(_priceController.text),
-      quantity: int.parse(_quantityController.text),
-      category: _categoryController.text,
-    );
     try {
+      setState(() => _isLoading = true);
+      final updatedProduct = Product(
+        id: widget.product.id,
+        barcode: _barcodeController.text,
+        name: _nameController.text,
+        price: double.parse(_priceController.text),
+        quantity: int.parse(_quantityController.text),
+        category: _categoryController.text,
+      );
+      
       await Provider.of<ProductProvider>(context, listen: false).updateProduct(updatedProduct);
+      
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product updated successfully!')));
-      context.pop(); // Go back to the previous screen
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product updated successfully')),
+      );
+      context.pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update product: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _deleteProduct() async {
     try {
-      await Provider.of<ProductProvider>(context, listen: false).deleteProduct(widget.product.id);
+      await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
+        action: ChangeRequestAction.delete,
+        barcode: widget.product.id.toString(),
+      );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product deleted successfully!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deletion request submitted!')));
       context.go('/edit-product'); // Go back to the product list
     } catch (e) {
       if (!mounted) return;
@@ -115,11 +128,45 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(controller: _barcodeController, decoration: const InputDecoration(labelText: 'Barcode')),
-              TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
-              TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Price'), keyboardType: TextInputType.number),
-              TextFormField(controller: _quantityController, decoration: const InputDecoration(labelText: 'Quantity'), keyboardType: TextInputType.number),
-              TextFormField(controller: _categoryController, decoration: const InputDecoration(labelText: 'Category')),
+              TextFormField(
+                controller: _barcodeController,
+                decoration: const InputDecoration(labelText: 'Barcode'),
+                validator: (v) => v == null || v.isEmpty ? 'Barcode is required' : null,
+              ),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (v) => v == null || v.isEmpty ? 'Name is required' : null,
+              ),
+              TextFormField(
+                controller: _priceController,
+                decoration: const InputDecoration(labelText: 'Price'),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Price is required';
+                  final price = double.tryParse(value);
+                  if (price == null) return 'Please enter a valid price';
+                  if (price <= 0) return 'Price must be greater than 0';
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _quantityController,
+                decoration: const InputDecoration(labelText: 'Quantity'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Quantity is required';
+                  final quantity = int.tryParse(value);
+                  if (quantity == null) return 'Please enter a valid whole number';
+                  if (quantity < 0) return 'Quantity cannot be negative';
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _categoryController,
+                decoration: const InputDecoration(labelText: 'Category'),
+                validator: (v) => v == null || v.isEmpty ? 'Category is required' : null,
+              ),
               const SizedBox(height: 20),
               CustomButton(
                 onPressed: _updateProduct,

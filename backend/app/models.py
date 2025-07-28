@@ -42,7 +42,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
     category = Column(String, index=True)
-    
+
     change_requests = relationship("ChangeRequest", back_populates="product")
     history_entries = relationship("ChangeHistory", back_populates="product")
 
@@ -56,6 +56,9 @@ class ChangeRequestAction(enum.Enum):
     add = "add"
     update = "update"
     sell = "sell"
+    create = "create"
+    delete = "delete"
+    mark_paid = "mark_paid"
 
 class PaymentStatus(enum.Enum):
     paid = "paid"
@@ -64,15 +67,22 @@ class PaymentStatus(enum.Enum):
 class ChangeRequest(Base):
     __tablename__ = "change_requests"
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True) # Can be null for 'create'
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     action = Column(Enum(ChangeRequestAction), nullable=False)
-    quantity_change = Column(Integer, nullable=False)
+    quantity_change = Column(Integer, nullable=True) # Now nullable
     
     # Fields specific to 'sell' actions
     buyer_name = Column(String, nullable=True)
     payment_status = Column(Enum(PaymentStatus), nullable=True)
+    
+    # Fields for create/update requests
+    new_product_name = Column(String, nullable=True)
+    new_product_barcode = Column(String, nullable=True)
+    new_product_price = Column(Float, nullable=True)
+    new_product_quantity = Column(Integer, nullable=True)
+    new_product_category = Column(String, nullable=True)
     
     status = Column(
         Enum(ChangeRequestStatus), default=ChangeRequestStatus.pending, nullable=False
@@ -88,13 +98,17 @@ class ChangeHistory(Base):
     __tablename__ = "change_history"
 
     id = Column(Integer, primary_key=True, index=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
-    quantity_change = Column(Integer, nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    quantity_change = Column(Integer, nullable=True) # Now nullable
     action = Column(Enum(ChangeRequestAction), nullable=False)
     status = Column(Enum(ChangeRequestStatus), nullable=False) # approved or rejected
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    # Fields to store details from the original request
+    buyer_name = Column(String, nullable=True)
+    payment_status = Column(Enum(PaymentStatus), nullable=True)
 
     product = relationship("Product", back_populates="history_entries")
     requester = relationship("User", foreign_keys=[requester_id])

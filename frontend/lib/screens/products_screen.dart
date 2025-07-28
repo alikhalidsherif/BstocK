@@ -1,7 +1,5 @@
-import 'package:bstock_app/models/models.dart';
 import 'package:bstock_app/providers/product_provider.dart';
 import 'package:bstock_app/widgets/product_card.dart';
-import 'package:bstock_app/widgets/reusable_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
@@ -18,12 +17,15 @@ import 'package:bstock_app/screens/shell_screen.dart';
 import 'package:bstock_app/screens/pending_requests_screen.dart';
 import 'package:bstock_app/screens/change_history_screen.dart';
 import 'package:bstock_app/screens/add_user_screen.dart';
+import 'package:bstock_app/screens/unpaid_requests_screen.dart';
+import '../screens/sales_screen.dart';
 
 class AppRouter {
   late final GoRouter router;
   final AuthProvider authProvider;
 
   final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
   AppRouter(this.authProvider) {
     router = GoRouter(
@@ -32,7 +34,7 @@ class AppRouter {
       initialLocation: '/login',
       routes: <RouteBase>[
         ShellRoute(
-          navigatorKey: GlobalKey<NavigatorState>(),
+          navigatorKey: _shellNavigatorKey,
           builder: (context, state, child) {
             return ShellScreen(child: child);
           },
@@ -48,6 +50,14 @@ class AppRouter {
             GoRoute(
               path: '/admin',
               builder: (context, state) => const AdminDashboardScreen(),
+            ),
+            GoRoute(
+              path: '/unpaid-requests',
+              builder: (context, state) => const UnpaidRequestsScreen(),
+            ),
+            GoRoute(
+              path: '/sales',
+              builder: (context, state) => const SalesScreen(),
             ),
           ],
         ),
@@ -124,7 +134,7 @@ class AppRouter {
         ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
-        final bool loggedIn = authProvider.status == AuthStatus.Authenticated;
+        final bool loggedIn = authProvider.status == AuthStatus.authenticated;
         final UserRole? userRole = authProvider.user?.role;
         final bool isAdmin = userRole == UserRole.admin;
 

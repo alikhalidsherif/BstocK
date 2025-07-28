@@ -1,7 +1,9 @@
-import 'package:flutter/foundation.dart';
-
 // Used to represent user roles from the backend
-enum UserRole { clerk, admin, supervisor }
+enum UserRole {
+  user,
+  admin,
+  supervisor,
+}
 
 class User {
   final int id;
@@ -20,7 +22,7 @@ class User {
       username: json['username'],
       role: UserRole.values.firstWhere(
         (e) => e.toString() == 'UserRole.${json['role']}',
-        orElse: () => UserRole.clerk,
+        orElse: () => UserRole.user,
       ),
     );
   }
@@ -55,19 +57,19 @@ class Product {
   }
 }
 
-enum ChangeRequestAction { add, update, sell, create, delete }
+// Enums for Change Requests
+enum ChangeRequestAction { add, update, sell, create, delete, markPaid }
+
 enum ChangeRequestStatus { pending, approved, rejected }
 
 class ChangeRequest {
   final int id;
   final Product? product;
-  final ChangeRequestAction action;
   final int? quantityChange;
+  final ChangeRequestAction action;
   final User requester;
-  final ChangeRequestStatus status;
   final String? buyerName;
   final String? paymentStatus;
-  // For create/update requests, we store the new data
   final String? newProductName;
   final String? newProductBarcode;
   final double? newProductPrice;
@@ -77,10 +79,9 @@ class ChangeRequest {
   ChangeRequest({
     required this.id,
     this.product,
-    required this.action,
     this.quantityChange,
+    required this.action,
     required this.requester,
-    required this.status,
     this.buyerName,
     this.paymentStatus,
     this.newProductName,
@@ -93,16 +94,21 @@ class ChangeRequest {
   factory ChangeRequest.fromJson(Map<String, dynamic> json) {
     return ChangeRequest(
       id: json['id'],
-      product: json['product'] != null ? Product.fromJson(json['product']) : null,
-      action: ChangeRequestAction.values.firstWhere((e) => e.name == json['action'], orElse: () => ChangeRequestAction.add),
+      product:
+          json['product'] != null ? Product.fromJson(json['product']) : null,
       quantityChange: json['quantity_change'],
+      action: ChangeRequestAction.values.firstWhere(
+        (e) => e.name == json['action'],
+        orElse: () => ChangeRequestAction.add,
+      ),
       requester: User.fromJson(json['requester']),
-      status: ChangeRequestStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => ChangeRequestStatus.pending),
       buyerName: json['buyer_name'],
       paymentStatus: json['payment_status'],
       newProductName: json['new_product_name'],
       newProductBarcode: json['new_product_barcode'],
-      newProductPrice: json['new_product_price'] != null ? (json['new_product_price'] as num).toDouble() : null,
+      newProductPrice: json['new_product_price'] != null
+          ? (json['new_product_price'] as num).toDouble()
+          : null,
       newProductQuantity: json['new_product_quantity'],
       newProductCategory: json['new_product_category'],
     );
@@ -118,6 +124,8 @@ class ChangeHistory {
   final User requester;
   final User reviewer;
   final DateTime timestamp;
+  final String? buyerName;
+  final String? paymentStatus;
 
   ChangeHistory({
     required this.id,
@@ -128,6 +136,8 @@ class ChangeHistory {
     required this.requester,
     required this.reviewer,
     required this.timestamp,
+    this.buyerName,
+    this.paymentStatus,
   });
 
   factory ChangeHistory.fromJson(Map<String, dynamic> json) {
@@ -140,6 +150,8 @@ class ChangeHistory {
       requester: User.fromJson(json['requester']),
       reviewer: User.fromJson(json['reviewer']),
       timestamp: DateTime.parse(json['timestamp']),
+      buyerName: json['buyer_name'],
+      paymentStatus: json['payment_status'],
     );
   }
 }
