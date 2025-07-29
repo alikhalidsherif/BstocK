@@ -26,12 +26,23 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Change History'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<HistoryProvider>(context, listen: false).fetchHistory(),
+          ),
+        ],
       ),
       body: Consumer<HistoryProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading && provider.history.isEmpty) {
+          if (provider.isHistoryLoading && provider.history.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
+
+          if (provider.historyError != null) {
+            return Center(child: Text('Error: ${provider.historyError}'));
+          }
+          
           if (provider.history.isEmpty) {
             return const Center(
               child: Text('No history found.'),
@@ -45,6 +56,8 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                 final entry = provider.history[index];
                 final actionText = entry.action.name.toUpperCase();
                 final statusText = entry.status.name.toUpperCase();
+                final productName = entry.product?.name ?? 'Product Not Found';
+                final reviewerName = entry.reviewer?.username ?? 'N/A';
 
                 final Color color;
                 final IconData icon;
@@ -66,7 +79,7 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                     color = Colors.red;
                     icon = Icons.delete_forever;
                     break;
-                  case ChangeRequestAction.markPaid:
+                  case ChangeRequestAction.mark_paid:
                     color = Colors.teal;
                     icon = Icons.attach_money;
                     break;
@@ -86,7 +99,7 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                       backgroundColor: color,
                       child: Icon(icon, color: Colors.white),
                     ),
-                    title: Text('$actionText - ${entry.product.name}'),
+                    title: Text('$actionText - $productName'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -96,7 +109,7 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                         if (entry.paymentStatus != null)
                           Text('Payment: ${entry.paymentStatus}'),
                         Text('By: ${entry.requester.username}'),
-                        Text('Reviewed by: ${entry.reviewer.username}'),
+                        Text('Reviewed by: $reviewerName'),
                       ],
                     ),
                     trailing: Column(

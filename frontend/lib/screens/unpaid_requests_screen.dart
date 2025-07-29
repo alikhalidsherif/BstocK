@@ -16,7 +16,7 @@ class _UnpaidRequestsScreenState extends State<UnpaidRequestsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<HistoryProvider>(context, listen: false).fetchHistory();
+      Provider.of<HistoryProvider>(context, listen: false).fetchUnpaidSales();
     });
   }
 
@@ -25,16 +25,24 @@ class _UnpaidRequestsScreenState extends State<UnpaidRequestsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Unpaid Transactions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => Provider.of<HistoryProvider>(context, listen: false).fetchUnpaidSales(),
+          ),
+        ],
       ),
       body: Consumer<HistoryProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
+          if (provider.isUnpaidLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final unpaidRequests = provider.history
-              .where((h) => h.paymentStatus == 'unpaid')
-              .toList();
+          if (provider.unpaidError != null) {
+            return Center(child: Text('Error: ${provider.unpaidError}'));
+          }
+
+          final unpaidRequests = provider.unpaidSales;
 
           if (unpaidRequests.isEmpty) {
             return const Center(
@@ -45,17 +53,36 @@ class _UnpaidRequestsScreenState extends State<UnpaidRequestsScreen> {
             itemCount: unpaidRequests.length,
             itemBuilder: (context, index) {
               final history = unpaidRequests[index];
+              if (history.product == null) {
+                // This entry is invalid, so we skip it.
+                return const SizedBox.shrink();
+              }
               return Card(
                 margin: const EdgeInsets.all(8.0),
                 child: ListTile(
-                  title: Text(history.product.name),
+                  title: Text(history.product!.name),
                   subtitle: Text('Buyer: ${history.buyerName ?? 'N/A'}'),
                   trailing: ElevatedButton(
-                    onPressed: () {
-                      Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
-                        action: ChangeRequestAction.markPaid,
-                        barcode: history.product.barcode,
-                      );
+                    onPressed: provider.isUnpaidLoading ? null : () async {
+                      try {
+                        await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
+                          action: ChangeRequestAction.mark_paid,
+                          barcode: history.id.toString(), // Pass history ID as barcode
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Request to mark as paid submitted!')),
+                          );
+                          // Refresh the list
+                          Provider.of<HistoryProvider>(context, listen: false).fetchUnpaidSales();
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to submit request: $e')),
+                          );
+                        }
+                      }
                     },
                     child: const Text('Request Paid'),
                   ),

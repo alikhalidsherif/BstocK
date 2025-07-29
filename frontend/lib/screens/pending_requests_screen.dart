@@ -29,6 +29,94 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     }
   }
 
+  Widget _getLeadingWidget(ChangeRequest request) {
+    switch (request.action) {
+      case ChangeRequestAction.add:
+        return const Icon(Icons.add, color: Colors.white);
+      case ChangeRequestAction.sell:
+        return const Icon(Icons.remove, color: Colors.white);
+      case ChangeRequestAction.create:
+        return const Icon(Icons.add_circle_outline, color: Colors.white);
+      case ChangeRequestAction.update:
+        return const Icon(Icons.edit, color: Colors.white);
+      case ChangeRequestAction.delete:
+        return const Icon(Icons.delete_forever, color: Colors.white);
+      case ChangeRequestAction.mark_paid:
+        return const Icon(Icons.attach_money, color: Colors.white);
+      default:
+        return const Icon(Icons.help_outline, color: Colors.white);
+    }
+  }
+
+  List<Widget> _getSubtitleWidgets(ChangeRequest request) {
+    final List<Widget> widgets = [];
+    
+    switch (request.action) {
+      case ChangeRequestAction.create:
+        // For create, show the new product details without "New" prefix
+        if (request.newProductBarcode != null) {
+          widgets.add(Text('Barcode: ${request.newProductBarcode}'));
+        }
+        if (request.newProductPrice != null) {
+          widgets.add(Text('Price: \$${request.newProductPrice!.toStringAsFixed(2)}'));
+        }
+        if (request.newProductQuantity != null) {
+          widgets.add(Text('Quantity: ${request.newProductQuantity}'));
+        }
+        if (request.newProductCategory != null) {
+          widgets.add(Text('Category: ${request.newProductCategory}'));
+        }
+        break;
+        
+      case ChangeRequestAction.add:
+      case ChangeRequestAction.sell:
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+        }
+        if (request.quantityChange != null) {
+          widgets.add(Text('Quantity: ${request.quantityChange}'));
+        }
+        if (request.buyerName != null && request.buyerName!.isNotEmpty) {
+          widgets.add(Text('Buyer: ${request.buyerName}'));
+        }
+        if (request.paymentStatus != null) {
+          widgets.add(Text('Payment: ${request.paymentStatus}'));
+        }
+        break;
+        
+      case ChangeRequestAction.update:
+        // For update, show "Old -> New" format for changed fields
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+        }
+        if (request.newProductName != null) {
+          final oldName = request.product?.name ?? 'Unknown';
+          widgets.add(Text('Name: $oldName → ${request.newProductName}'));
+        }
+        if (request.newProductPrice != null) {
+          final oldPrice = request.product?.price?.toStringAsFixed(2) ?? 'Unknown';
+          widgets.add(Text('Price: \$$oldPrice → \$${request.newProductPrice!.toStringAsFixed(2)}'));
+        }
+        break;
+        
+      case ChangeRequestAction.delete:
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+          widgets.add(Text('This product will be deleted'));
+        }
+        break;
+        
+      case ChangeRequestAction.mark_paid:
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+        }
+        widgets.add(const Text('Mark as paid'));
+        break;
+    }
+    
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,7 +156,7 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                 case ChangeRequestAction.delete:
                   color = Colors.red;
                   break;
-                case ChangeRequestAction.markPaid:
+                case ChangeRequestAction.mark_paid:
                   color = Colors.teal;
                   break;
               }
@@ -78,23 +166,14 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: color,
-                    child: Text(
-                      '${request.quantityChange ?? 'N/A'}',
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                    child: _getLeadingWidget(request),
                   ),
-                  title: Text('${actionText.toUpperCase()} - ${request.product?.name ?? request.newProductName ?? 'N/A'}'),
+                  title: Text('${actionText.toUpperCase()} - ${request.product?.name ?? request.newProductName ?? 'Unknown'}'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Requester: ${request.requester.username}'),
-                      if (request.product != null) Text('Barcode: ${request.product!.barcode}'),
-                      if (request.newProductName != null) Text('New Name: ${request.newProductName}'),
-                      if (request.newProductPrice != null) Text('New Price: \$${request.newProductPrice}'),
-                      if (request.buyerName != null && request.buyerName!.isNotEmpty)
-                        Text('Buyer: ${request.buyerName}'),
-                      if (request.paymentStatus != null)
-                        Text('Payment: ${request.paymentStatus}'),
+                      ..._getSubtitleWidgets(request),
                     ],
                   ),
                   isThreeLine: true,

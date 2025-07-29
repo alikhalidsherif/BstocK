@@ -58,7 +58,7 @@ class Product {
 }
 
 // Enums for Change Requests
-enum ChangeRequestAction { add, update, sell, create, delete, markPaid }
+enum ChangeRequestAction { add, update, sell, create, delete, mark_paid }
 
 enum ChangeRequestStatus { pending, approved, rejected }
 
@@ -117,24 +117,24 @@ class ChangeRequest {
 
 class ChangeHistory {
   final int id;
-  final Product product;
+  final Product? product;
   final int? quantityChange;
   final ChangeRequestAction action;
   final ChangeRequestStatus status;
   final User requester;
-  final User reviewer;
+  final User? reviewer;
   final DateTime timestamp;
   final String? buyerName;
   final String? paymentStatus;
 
   ChangeHistory({
     required this.id,
-    required this.product,
+    this.product,
     this.quantityChange,
     required this.action,
     required this.status,
     required this.requester,
-    required this.reviewer,
+    this.reviewer,
     required this.timestamp,
     this.buyerName,
     this.paymentStatus,
@@ -143,12 +143,12 @@ class ChangeHistory {
   factory ChangeHistory.fromJson(Map<String, dynamic> json) {
     return ChangeHistory(
       id: json['id'],
-      product: Product.fromJson(json['product']),
+      product: json['product'] != null ? Product.fromJson(json['product']) : null,
       quantityChange: json['quantity_change'],
       action: ChangeRequestAction.values.firstWhere((e) => e.name == json['action'], orElse: () => ChangeRequestAction.add),
       status: ChangeRequestStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => ChangeRequestStatus.pending),
       requester: User.fromJson(json['requester']),
-      reviewer: User.fromJson(json['reviewer']),
+      reviewer: json['reviewer'] != null ? User.fromJson(json['reviewer']) : null,
       timestamp: DateTime.parse(json['timestamp']),
       buyerName: json['buyer_name'],
       paymentStatus: json['payment_status'],

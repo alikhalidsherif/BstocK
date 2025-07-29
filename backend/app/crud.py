@@ -90,6 +90,14 @@ def get_pending_change_requests(db: Session, skip: int = 0, limit: int = 100):
         joinedload(models.ChangeRequest.requester)
     ).filter(models.ChangeRequest.status == models.ChangeRequestStatus.pending).offset(skip).limit(limit).all()
 
+def has_pending_product_creation_request(db: Session, barcode: str):
+    """Check if there's already a pending request to create a product with the given barcode"""
+    return db.query(models.ChangeRequest).filter(
+        models.ChangeRequest.action == models.ChangeRequestAction.create,
+        models.ChangeRequest.new_product_barcode == barcode,
+        models.ChangeRequest.status == models.ChangeRequestStatus.pending
+    ).first() is not None
+
 def get_change_history(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.ChangeHistory).options(
         joinedload(models.ChangeHistory.product),
@@ -97,20 +105,39 @@ def get_change_history(db: Session, skip: int = 0, limit: int = 100):
         joinedload(models.ChangeHistory.reviewer)
     ).order_by(models.ChangeHistory.timestamp.desc()).offset(skip).limit(limit).all()
 
+def get_sales_history(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.ChangeHistory).options(
+        joinedload(models.ChangeHistory.product),
+        joinedload(models.ChangeHistory.requester),
+        joinedload(models.ChangeHistory.reviewer)
+    ).filter(
+        models.ChangeHistory.action == models.ChangeRequestAction.sell,
+        models.ChangeHistory.product_id.isnot(None) # Ensure product exists
+    ).order_by(models.ChangeHistory.timestamp.desc()).offset(skip).limit(limit).all()
+
 def approve_change_request(db: Session, request_id: int, reviewer_id: int):
     db_request = db.query(models.ChangeRequest).filter(models.ChangeRequest.id == request_id).first()
     if not db_request or db_request.status != models.ChangeRequestStatus.pending:
         return None
 
-    # Update product quantity
-    db_product = db.query(models.Product).filter(models.Product.id == db_request.product_id).first()
+    db_product = None
+    if db_request.product_id:
+        db_product = db.query(models.Product).filter(models.Product.id == db_request.product_id).first()
+
     if db_request.action == models.ChangeRequestAction.add:
-        db_product.quantity += db_request.quantity_change
+        if db_product:
+            db_product.quantity += db_request.quantity_change
     elif db_request.action == models.ChangeRequestAction.sell:
-        if db_product.quantity < db_request.quantity_change:
-            raise ValueError("Not enough stock to sell.")
-        db_product.quantity -= db_request.quantity_change
+        if db_product:
+            if db_product.quantity < db_request.quantity_change:
+                raise ValueError("Not enough stock to sell.")
+            db_product.quantity -= db_request.quantity_change
     elif db_request.action == models.ChangeRequestAction.create:
+        # Check if a product with this barcode already exists
+        existing_product = db.query(models.Product).filter(models.Product.barcode == db_request.new_product_barcode).first()
+        if existing_product:
+            raise ValueError(f"A product with barcode '{db_request.new_product_barcode}' already exists.")
+        
         new_product_schema = schemas.ProductCreate(
             name=db_request.new_product_name,
             barcode=db_request.new_product_barcode,
@@ -119,21 +146,36 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
             category=db_request.new_product_category,
         )
         db_product = create_product(db, new_product_schema)
-        db.commit()
+        db.commit() # Commit the new product to get an ID
         db.refresh(db_product)
     elif db_request.action == models.ChangeRequestAction.delete:
-        delete_product(db, db_product)
+        # The product will be deleted after logging to history.
+        pass
     elif db_request.action == models.ChangeRequestAction.mark_paid:
-        history_entry = db.query(models.ChangeHistory).filter(models.ChangeHistory.product_id == db_product.id, models.ChangeHistory.payment_status == models.PaymentStatus.unpaid).first()
+        # For mark_paid, find the specific history entry and update it
+        # The product_id contains the history entry's product_id, we need to get the history ID from the request
+        history_entry = None
+        if db_request.product_id:
+            # Find the unpaid history entry for this product
+            history_entry = db.query(models.ChangeHistory).filter(
+                models.ChangeHistory.product_id == db_request.product_id,
+                models.ChangeHistory.payment_status == models.PaymentStatus.unpaid
+            ).first()
+        
         if history_entry:
             history_entry.payment_status = models.PaymentStatus.paid
             db.commit()
             db.refresh(history_entry)
 
-    # Log to history
+    # Log to history before deleting the product
+    # For create actions, use the new_product_quantity instead of quantity_change
+    quantity_for_history = db_request.quantity_change
+    if db_request.action == models.ChangeRequestAction.create:
+        quantity_for_history = db_request.new_product_quantity
+    
     history_entry = models.ChangeHistory(
-        product_id=db_product.id,
-        quantity_change=db_request.quantity_change,
+        product_id=db_product.id if db_product else None,
+        quantity_change=quantity_for_history,
         action=db_request.action,
         status=models.ChangeRequestStatus.approved,
         requester_id=db_request.requester_id,
@@ -142,6 +184,11 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
         payment_status=db_request.payment_status
     )
     db.add(history_entry)
+
+    # Now, if the action was 'delete', delete the product
+    if db_request.action == models.ChangeRequestAction.delete:
+        if db_product:
+            delete_product(db, db_product)
 
     # Delete the original request
     db.delete(db_request)

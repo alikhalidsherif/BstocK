@@ -109,7 +109,11 @@ class AppRouter {
           path: '/edit-product-details',
           parentNavigatorKey: _rootNavigatorKey,
           builder: (BuildContext context, GoRouterState state) {
-            final product = state.extra as Product;
+            final product = state.extra as Product?;
+            if (product == null) {
+              // Redirect or show an error, for now, redirecting to the list
+              return const EditProductListScreen();
+            }
             return EditProductDetailsScreen(product: product);
           },
         ),

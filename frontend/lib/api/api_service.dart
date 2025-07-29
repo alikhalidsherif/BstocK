@@ -223,6 +223,19 @@ class ApiService {
     }
   }
 
+  Future<List<ChangeHistory>> getUnpaidSales() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/history/unpaid'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => ChangeHistory.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to load unpaid sales');
+    }
+  }
+
   Future<Map<String, dynamic>> importProductsFromExcel(String filePath) async {
     var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/products/import'));
     request.headers.addAll(await _getHeaders());

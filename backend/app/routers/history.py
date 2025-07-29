@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 import pandas as pd
 import io
@@ -18,7 +18,7 @@ def read_change_history(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_admin),
+    current_user: models.User = Depends(auth.get_current_active_user),
 ):
     # Only admins and supervisors can view history
     history = crud.get_change_history(db, skip=skip, limit=limit)
@@ -29,13 +29,31 @@ def read_sales_history(
     skip: int = 0,
     limit: int = 1000,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_admin),
+    current_user: models.User = Depends(auth.get_current_active_user), # Changed to active user
 ):
     """Get only sales transactions from history"""
-    history = crud.get_change_history(db, skip=skip, limit=limit)
-    # Filter for only sell actions
-    sales_only = [h for h in history if h.action == models.ChangeRequestAction.sell]
-    return sales_only
+    sales_history = crud.get_sales_history(db, skip=skip, limit=limit)
+    return sales_history
+
+@router.get("/unpaid", response_model=List[schemas.ChangeHistory])
+def read_unpaid_sales(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user),
+):
+    """Get all sales with an 'unpaid' status."""
+    unpaid_sales = db.query(models.ChangeHistory).options(
+        joinedload(models.ChangeHistory.product),
+        joinedload(models.ChangeHistory.requester),
+        joinedload(models.ChangeHistory.reviewer)
+    ).filter(
+        models.ChangeHistory.action == models.ChangeRequestAction.sell,
+        models.ChangeHistory.payment_status == models.PaymentStatus.unpaid,
+        models.ChangeHistory.product_id.isnot(None)
+    ).order_by(models.ChangeHistory.timestamp.desc()).offset(skip).limit(limit).all()
+    return unpaid_sales
+
 
 @router.get("/sales/export", response_class=StreamingResponse)
 def export_sales_to_excel(
@@ -43,8 +61,7 @@ def export_sales_to_excel(
     current_user: models.User = Depends(auth.get_current_user_for_export)
 ):
     """Export sales data to Excel file"""
-    history = crud.get_change_history(db, skip=0, limit=10000)
-    sales_only = [h for h in history if h.action == models.ChangeRequestAction.sell]
+    sales_only = crud.get_sales_history(db, skip=0, limit=10000) # Use the new function
     
     if not sales_only:
         raise HTTPException(status_code=404, detail="No sales found to export.")

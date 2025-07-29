@@ -37,16 +37,6 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
 
     setState(() => _isLoading = true);
 
-    final isUnique = await _isBarcodeUnique(_barcodeController.text);
-    if (!mounted) return;
-    if (!isUnique) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A product with this barcode already exists.')),
-      );
-      setState(() => _isLoading = false);
-      return;
-    }
-
     try {
       await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
         action: ChangeRequestAction.create,
@@ -57,10 +47,21 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
         newProductCategory: _categoryController.text,
       );
       if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Product creation request submitted!')),
       );
-      context.pop();
+      
+      // Clear the form and navigate back only on success
+      _formKey.currentState!.reset();
+      _barcodeController.clear();
+      _nameController.clear();
+      _priceController.clear();
+      _quantityController.clear();
+      _categoryController.clear();
+      
+      // Use Navigator.of(context).pop() instead of context.pop() for better reliability
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,12 +72,6 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<bool> _isBarcodeUnique(String barcode) async {
-    final product = await Provider.of<ProductProvider>(context, listen: false)
-        .fetchProductByBarcode(barcode);
-    return product == null;
   }
 
   @override
@@ -155,7 +150,7 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                 const CircularProgressIndicator()
               else
                 CustomButton(
-                  onPressed: _submitNewProduct,
+                  onPressed: _isLoading ? null : () => _submitNewProduct(),
                   text: 'Create Product',
                   icon: Icons.add,
                 ),
