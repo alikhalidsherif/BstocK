@@ -26,7 +26,16 @@ class HistoryProvider with ChangeNotifier {
   String? get unpaidError => _unpaidError;
   String? get salesError => _salesError;
 
-  HistoryProvider();
+  HistoryProvider() {
+    _apiService.connectRealtime((msg) {
+      final type = msg['type'];
+      if (type == 'history.updated') {
+        fetchHistory();
+        fetchUnpaidSales();
+        fetchSalesHistory();
+      }
+    });
+  }
 
   Future<void> fetchHistory() async {
     _isHistoryLoading = true;

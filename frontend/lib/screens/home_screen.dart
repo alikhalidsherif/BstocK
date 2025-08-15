@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
@@ -174,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final bool isAdmin = authProvider.user?.role == UserRole.admin;
     final historyProvider = Provider.of<HistoryProvider>(context);
-    final hasUnpaid = historyProvider.history.any((h) => h.paymentStatus == 'unpaid');
 
     // Content only; AppBar provided by ShellScreen
     return Center(

@@ -46,13 +46,10 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
         newProductQuantity: int.parse(_quantityController.text),
         newProductCategory: _categoryController.text,
       );
+      
       if (!mounted) return;
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Product creation request submitted!')),
-      );
-      
-      // Clear the form and navigate back only on success
+      // Clear the form first
       _formKey.currentState!.reset();
       _barcodeController.clear();
       _nameController.clear();
@@ -60,8 +57,18 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
       _quantityController.clear();
       _categoryController.clear();
       
-      // Use Navigator.of(context).pop() instead of context.pop() for better reliability
-      Navigator.of(context).pop();
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Product creation request submitted!')),
+      );
+      
+      // Navigate back with a slight delay to avoid navigation conflicts
+      Future.microtask(() {
+        if (mounted && context.canPop()) {
+          context.pop();
+        }
+      });
+      
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,7 +87,13 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
     final categoryOptions = productProvider.categories;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add New Product')),
+      appBar: AppBar(
+        title: const Text('Add New Product'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -95,7 +108,11 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                   return null;
                 },
               ),
-              TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name'), validator: (v) => v!.isEmpty ? 'Required' : null),
+              TextFormField(
+                controller: _nameController, 
+                decoration: const InputDecoration(labelText: 'Name'), 
+                validator: (v) => v?.isEmpty == true ? 'Required' : null
+              ),
               TextFormField(
                 controller: _priceController,
                 decoration: const InputDecoration(labelText: 'Price'),
@@ -133,15 +150,24 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                   _categoryController.text = selection;
                 },
                 fieldViewBuilder: (BuildContext context, TextEditingController fieldController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
-                  // This is a bit of a workaround to use our _categoryController
-                  // with the Autocomplete widget's internal controller.
-                  Future.microtask(() => fieldController.text = _categoryController.text);
+                  // Sync the field controller with our category controller
+                  if (fieldController.text != _categoryController.text) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        fieldController.text = _categoryController.text;
+                      }
+                    });
+                  }
                   return TextFormField(
                     controller: fieldController,
                     focusNode: fieldFocusNode,
                     decoration: const InputDecoration(labelText: 'Category'),
-                    validator: (v) => v!.isEmpty ? 'Required' : null,
-                    onChanged: (text) => _categoryController.text = text,
+                    validator: (v) => v?.isEmpty == true ? 'Required' : null,
+                    onChanged: (text) {
+                      if (mounted) {
+                        _categoryController.text = text;
+                      }
+                    },
                   );
                 },
               ),

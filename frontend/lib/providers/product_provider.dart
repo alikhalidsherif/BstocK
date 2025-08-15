@@ -53,6 +53,12 @@ class ProductProvider with ChangeNotifier {
   ProductProvider() {
     fetchProducts();
     fetchCategories();
+    _apiService.connectRealtime((msg) {
+      final type = msg['type'];
+      if (type == 'product.updated') {
+        fetchProducts();
+      }
+    });
   }
 
   Future<void> fetchCategories() async {

@@ -1,18 +1,52 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/status.dart' as ws_status;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
 
 class ApiService {
+  // Configure your API base URL once via environment-like constants.
+  // For web builds, it will default to localhost; for device, you can override
+  // using a const below or via a simple runtime override.
+  static const String defaultWebBase = 'http://127.0.0.1:8000/api';
+  static const String defaultDeviceBase = 'http://10.0.2.2:8000/api'; // Android emulator loopback
+  static String? overrideBaseUrl;
+
   String get _baseUrl {
+    if (overrideBaseUrl != null) return overrideBaseUrl!;
     if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
+      return defaultWebBase;
     } else {
-      return 'http://10.0.2.2:8000/api';
+      // For emulators, 10.0.2.2 routes to host machine. For real devices, change to your LAN IP.
+      return defaultDeviceBase;
     }
   }
   String get baseUrl => _baseUrl;
+
+  WebSocketChannel? _channel;
+  void connectRealtime(void Function(Map<String, dynamic>) onMessage) {
+    // Build WS URL from API base URL to always target the backend
+    final api = Uri.parse(_baseUrl);
+    final scheme = api.scheme == 'https' ? 'wss' : 'ws';
+    final wsUrl = Uri(scheme: scheme, host: api.host, port: api.port, path: '/ws/updates').toString();
+    _channel?.sink.close(ws_status.normalClosure);
+    _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+    _channel!.stream.listen((event) {
+      try {
+        final Map<String, dynamic> msg = jsonDecode(event);
+        onMessage(msg);
+      } catch (_) {}
+    }, onError: (_) {
+      // ignore for now
+    });
+  }
+
+  void disconnectRealtime() {
+    _channel?.sink.close(ws_status.normalClosure);
+    _channel = null;
+  }
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -112,7 +146,7 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to submit change request.');
+      throw Exception('Failed to submit change request: ${response.body}');
     }
   }
 
@@ -349,7 +383,7 @@ class ApiService {
         'role': role,
       }),
     );
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return User.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Failed to create user: ${response.body}');

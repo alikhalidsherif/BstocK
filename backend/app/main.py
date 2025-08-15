@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from . import models, auth
 from .routers import users, inventory, products, history
+from .routers import realtime
 
 # This will create the database tables if they don't exist
 # on application startup. For production, you might want to handle
@@ -16,14 +17,11 @@ app = FastAPI(
 )
 
 # CORS Middleware
-origins = [
-    "*",  # Allow all origins for development
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    # Allow localhost and 127.0.0.1 with any port for Flutter web dev
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_credentials=False,  # Using Authorization header, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -34,6 +32,7 @@ app.include_router(products.router)
 app.include_router(history.router)
 # Users router handles user endpoints (including /api/token and /api/users/*)
 app.include_router(users.router, prefix="/api", tags=["Users"])
+app.include_router(realtime.router)
 
 @app.get("/")
 def read_root():

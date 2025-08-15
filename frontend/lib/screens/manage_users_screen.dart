@@ -26,6 +26,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Users'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/add-user'),
@@ -116,8 +120,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<UserRole>>[
         const PopupMenuItem<UserRole>(
-          value: UserRole.user,
-          child: Text('Set as User'),
+          value: UserRole.clerk,
+          child: Text('Set as Clerk'),
+        ),
+        const PopupMenuItem<UserRole>(
+          value: UserRole.supervisor,
+          child: Text('Set as Supervisor'),
         ),
         const PopupMenuItem<UserRole>(
           value: UserRole.admin,

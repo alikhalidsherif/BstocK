@@ -26,6 +26,10 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Change History'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

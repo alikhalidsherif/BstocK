@@ -15,7 +15,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  UserRole _selectedRole = UserRole.user;
+  UserRole _selectedRole = UserRole.clerk;
   bool _isLoading = false;
 
   Future<void> _submitUser() async {
@@ -50,6 +50,10 @@ class _AddUserScreenState extends State<AddUserScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add New User'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 from .models import UserRole, ChangeRequestStatus, ChangeRequestAction, PaymentStatus
@@ -23,8 +23,7 @@ class User(UserBase):
     id: int
     is_active: bool
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
@@ -44,8 +43,7 @@ class ProductCreate(ProductBase):
 class Product(ProductBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Change Request Schemas
 class ChangeRequestBase(BaseModel):
@@ -59,7 +57,7 @@ class ChangeRequestSubmit(BaseModel):
     action: ChangeRequestAction
     quantity_change: Optional[int] = None
     buyer_name: Optional[str] = None
-    payment_status: Optional[str] = None
+    payment_status: Optional[PaymentStatus] = None
     new_product_name: Optional[str] = None
     new_product_barcode: Optional[str] = None
     new_product_price: Optional[float] = None
@@ -69,20 +67,21 @@ class ChangeRequestSubmit(BaseModel):
 class ChangeRequestCreate(ChangeRequestBase):
     """Internal schema used when we already resolved the product_id."""
     buyer_name: Optional[str] = None
-    payment_status: Optional[str] = None
+    payment_status: Optional[PaymentStatus] = None
     new_product_name: Optional[str] = None
     new_product_barcode: Optional[str] = None
     new_product_price: Optional[float] = None
     new_product_quantity: Optional[int] = None
     new_product_category: Optional[str] = None
+    history_id: Optional[int] = None
 
 class ChangeRequest(ChangeRequestCreate):
     id: int
     requester: User
     product: Optional[Product] = None
+    history_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ChangeHistory(BaseModel):
     id: int
@@ -96,5 +95,4 @@ class ChangeHistory(BaseModel):
     buyer_name: Optional[str] = None
     payment_status: Optional[PaymentStatus] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

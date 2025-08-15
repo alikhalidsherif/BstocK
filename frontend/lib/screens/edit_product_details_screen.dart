@@ -82,7 +82,7 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deletion request submitted!')));
-      context.go('/edit-product'); // Go back to the product list
+      context.go('/'); // Go back to the home screen
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -94,6 +94,10 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Product'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),

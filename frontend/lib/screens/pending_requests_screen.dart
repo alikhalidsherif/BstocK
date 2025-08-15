@@ -122,6 +122,10 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Requests'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       body: Consumer<ChangeRequestProvider>(
         builder: (context, provider, child) {

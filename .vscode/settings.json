@@ -1,4 +1,4 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive",
-    "cmake.sourceDirectory": "C:/Users/alikh/Documents/Dev/BstocK/frontend/windows/flutter"
+    "cmake.generator": "Visual Studio 17 2022"
 }

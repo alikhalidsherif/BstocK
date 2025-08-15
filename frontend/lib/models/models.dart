@@ -1,9 +1,5 @@
 // Used to represent user roles from the backend
-enum UserRole {
-  user,
-  admin,
-  supervisor,
-}
+enum UserRole { clerk, admin, supervisor }
 
 class User {
   final int id;
@@ -20,11 +16,27 @@ class User {
     return User(
       id: json['id'],
       username: json['username'],
-      role: UserRole.values.firstWhere(
-        (e) => e.toString() == 'UserRole.${json['role']}',
-        orElse: () => UserRole.user,
-      ),
+      role: _parseRole(json['role']),
     );
+  }
+
+  static UserRole _parseRole(dynamic raw) {
+    if (raw == null) return UserRole.clerk;
+    final String value = raw.toString();
+    // Accept backend enum values like 'clerk', 'admin', 'supervisor'
+    switch (value) {
+      case 'clerk':
+        return UserRole.clerk;
+      case 'admin':
+        return UserRole.admin;
+      case 'supervisor':
+        return UserRole.supervisor;
+      default:
+        // Also accept prefixed names like 'UserRole.admin'
+        if (value.endsWith('.admin')) return UserRole.admin;
+        if (value.endsWith('.supervisor')) return UserRole.supervisor;
+        return UserRole.clerk;
+      }
   }
 }
 

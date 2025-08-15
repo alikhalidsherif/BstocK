@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from . import models, schemas, auth
 from datetime import datetime, timezone
+from .events import hub
 
 # User CRUD
 def get_user_by_username(db: Session, username: str):
@@ -60,6 +61,10 @@ def update_product(db: Session, product: models.Product, product_in: schemas.Pro
     return product
 
 def delete_product(db: Session, product: models.Product):
+    # Before deleting the product, nullify foreign keys in history that reference it
+    db.query(models.ChangeHistory).filter(models.ChangeHistory.product_id == product.id).update(
+        {models.ChangeHistory.product_id: None}, synchronize_session=False
+    )
     db.delete(product)
     db.commit()
     return product
@@ -72,6 +77,7 @@ def create_change_request(db: Session, request: schemas.ChangeRequestCreate, use
         quantity_change=request.quantity_change,
         buyer_name=request.buyer_name,
         payment_status=request.payment_status,
+        history_id=request.history_id,
         requester_id=user_id,
         new_product_name=request.new_product_name,
         new_product_barcode=request.new_product_barcode,
@@ -132,6 +138,27 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
             if db_product.quantity < db_request.quantity_change:
                 raise ValueError("Not enough stock to sell.")
             db_product.quantity -= db_request.quantity_change
+    elif db_request.action == models.ChangeRequestAction.update:
+        # Apply field updates to the existing product
+        if not db_product:
+            raise ValueError("Product not found for update")
+        update_fields = {}
+        if db_request.new_product_name is not None:
+            update_fields['name'] = db_request.new_product_name
+        if db_request.new_product_barcode is not None:
+            # Ensure uniqueness
+            existing = db.query(models.Product).filter(models.Product.barcode == db_request.new_product_barcode).first()
+            if existing and existing.id != db_product.id:
+                raise ValueError(f"Another product with barcode {db_request.new_product_barcode} already exists.")
+            update_fields['barcode'] = db_request.new_product_barcode
+        if db_request.new_product_price is not None:
+            update_fields['price'] = db_request.new_product_price
+        if db_request.new_product_quantity is not None:
+            update_fields['quantity'] = db_request.new_product_quantity
+        if db_request.new_product_category is not None:
+            update_fields['category'] = db_request.new_product_category
+        for k, v in update_fields.items():
+            setattr(db_product, k, v)
     elif db_request.action == models.ChangeRequestAction.create:
         # Check if a product with this barcode already exists
         existing_product = db.query(models.Product).filter(models.Product.barcode == db_request.new_product_barcode).first()
@@ -152,20 +179,27 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
         # The product will be deleted after logging to history.
         pass
     elif db_request.action == models.ChangeRequestAction.mark_paid:
-        # For mark_paid, find the specific history entry and update it
-        # The product_id contains the history entry's product_id, we need to get the history ID from the request
-        history_entry = None
-        if db_request.product_id:
-            # Find the unpaid history entry for this product
-            history_entry = db.query(models.ChangeHistory).filter(
-                models.ChangeHistory.product_id == db_request.product_id,
-                models.ChangeHistory.payment_status == models.PaymentStatus.unpaid
+        # For mark_paid, update the specific history entry if provided
+        updated_history = None
+        if db_request.history_id is not None:
+            updated_history = db.query(models.ChangeHistory).filter(
+                models.ChangeHistory.id == db_request.history_id
             ).first()
-        
-        if history_entry:
-            history_entry.payment_status = models.PaymentStatus.paid
-            db.commit()
-            db.refresh(history_entry)
+            if updated_history:
+                updated_history.payment_status = models.PaymentStatus.paid
+                db.add(updated_history)
+                db.commit()
+                db.refresh(updated_history)
+
+    # For mark_paid, we return the updated history entry and skip creating a new log
+    if db_request.action == models.ChangeRequestAction.mark_paid:
+        db.delete(db_request)
+        db.commit()
+        # Notify clients
+        if db_product:
+            hub.publish_from_thread({"type": "product.updated", "product_id": db_product.id})
+        hub.publish_from_thread({"type": "history.updated"})
+        return updated_history
 
     # Log to history before deleting the product
     # For create actions, use the new_product_quantity instead of quantity_change
@@ -173,8 +207,10 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
     if db_request.action == models.ChangeRequestAction.create:
         quantity_for_history = db_request.new_product_quantity
     
+    # For delete actions, avoid linking the history entry to a product about to be removed
+    history_product_id = None if db_request.action == models.ChangeRequestAction.delete else (db_product.id if db_product else None)
     history_entry = models.ChangeHistory(
-        product_id=db_product.id if db_product else None,
+        product_id=history_product_id,
         quantity_change=quantity_for_history,
         action=db_request.action,
         status=models.ChangeRequestStatus.approved,
@@ -185,14 +221,21 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
     )
     db.add(history_entry)
 
-    # Now, if the action was 'delete', delete the product
+    # Now, if the action was 'delete', detach FKs and delete the product
     if db_request.action == models.ChangeRequestAction.delete:
         if db_product:
+            # Detach the pending request from the product to avoid FK constraint during product deletion
+            db_request.product_id = None
+            db.add(db_request)
             delete_product(db, db_product)
 
     # Delete the original request
     db.delete(db_request)
     db.commit()
+    # Broadcast changes
+    if db_product:
+        hub.publish_from_thread({"type": "product.updated", "product_id": db_product.id})
+    hub.publish_from_thread({"type": "history.updated"})
     return history_entry
 
 

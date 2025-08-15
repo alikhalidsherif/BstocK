@@ -26,6 +26,16 @@ class _EditProductListScreenState extends State<EditProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select a Product to Edit'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).maybePop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
       ),
       body: Column(
         children: [

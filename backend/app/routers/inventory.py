@@ -76,6 +76,15 @@ def request_inventory_change(
         new_product_category=request.new_product_category,
     )
 
+    # Attach history_id for mark_paid action to ensure the correct record is updated
+    if request.action == ChangeRequestAction.mark_paid:
+        try:
+            change_request_data.history_id = int(request.barcode) if request.barcode else None
+            # Align payment status for mark_paid to 'paid'
+            change_request_data.payment_status = models.PaymentStatus.paid
+        except Exception:
+            change_request_data.history_id = None
+
     return crud.create_change_request(db, change_request_data, current_user.id)
 
 @router.get("/requests/pending", response_model=List[schemas.ChangeRequest])

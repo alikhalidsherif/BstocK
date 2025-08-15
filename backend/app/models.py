@@ -72,6 +72,8 @@ class ChangeRequest(Base):
     approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     action = Column(Enum(ChangeRequestAction), nullable=False)
     quantity_change = Column(Integer, nullable=True) # Now nullable
+    # Optional link to a specific history entry (used for mark_paid workflow)
+    history_id = Column(Integer, nullable=True)
     
     # Fields specific to 'sell' actions
     buyer_name = Column(String, nullable=True)
