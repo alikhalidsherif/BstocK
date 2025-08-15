@@ -19,6 +19,7 @@ import 'package:bstock_app/screens/change_history_screen.dart';
 import 'package:bstock_app/screens/add_user_screen.dart';
 import 'package:bstock_app/screens/unpaid_requests_screen.dart';
 import '../screens/sales_screen.dart';
+import '../screens/archived_products_screen.dart';
 
 class AppRouter {
   late final GoRouter router;
@@ -136,6 +137,11 @@ class AppRouter {
           parentNavigatorKey: _rootNavigatorKey,
           builder: (context, state) => const AddUserScreen(),
         ),
+        GoRoute(
+          path: '/admin/archived-products',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const ArchivedProductsScreen(),
+        ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
         final bool loggedIn = authProvider.status == AuthStatus.authenticated;
@@ -160,7 +166,8 @@ class AppRouter {
           '/edit-product-details',
           '/admin/pending-requests',
           '/admin/history',
-          '/add-user'
+          '/add-user',
+          '/admin/archived-products'
         ];
         if (adminRoutes.contains(state.matchedLocation) && !isAdmin) {
           return '/'; // Redirect non-admins trying to access admin pages

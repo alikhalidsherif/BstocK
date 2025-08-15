@@ -47,6 +47,7 @@ class Product {
   final double price;
   final int quantity;
   final String category;
+  final bool isArchived;
 
   Product({
     required this.id,
@@ -55,6 +56,7 @@ class Product {
     required this.price,
     required this.quantity,
     required this.category,
+    this.isArchived = false,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -65,12 +67,13 @@ class Product {
       price: (json['price'] as num).toDouble(),
       quantity: json['quantity'],
       category: json['category'] ?? 'Uncategorized',
+      isArchived: json['is_archived'] ?? false,
     );
   }
 }
 
 // Enums for Change Requests
-enum ChangeRequestAction { add, update, sell, create, delete, mark_paid }
+enum ChangeRequestAction { add, update, sell, create, archive, restore, delete, mark_paid }
 
 enum ChangeRequestStatus { pending, approved, rejected }
 

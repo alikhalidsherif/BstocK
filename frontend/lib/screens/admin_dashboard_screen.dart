@@ -125,6 +125,12 @@ class AdminDashboardScreen extends StatelessWidget {
         label: 'Sales Tracking',
         onTap: () => context.push('/sales'),
       ),
+      _buildActionCard(
+        context,
+        icon: Icons.archive,
+        label: 'Archived Products',
+        onTap: () => context.push('/admin/archived-products'),
+      ),
     ];
 
     return GridView.builder(

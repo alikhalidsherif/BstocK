@@ -18,9 +18,8 @@ def read_change_history(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: models.User = Depends(auth.get_current_active_admin_or_supervisor),
 ):
-    # Only admins and supervisors can view history
     history = crud.get_change_history(db, skip=skip, limit=limit)
     return history 
 
@@ -29,7 +28,7 @@ def read_sales_history(
     skip: int = 0,
     limit: int = 1000,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_user), # Changed to active user
+    current_user: models.User = Depends(auth.get_current_active_admin_or_supervisor),
 ):
     """Get only sales transactions from history"""
     sales_history = crud.get_sales_history(db, skip=skip, limit=limit)
@@ -40,7 +39,7 @@ def read_unpaid_sales(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: models.User = Depends(auth.get_current_active_admin_or_supervisor),
 ):
     """Get all sales with an 'unpaid' status."""
     unpaid_sales = db.query(models.ChangeHistory).options(
@@ -58,7 +57,7 @@ def read_unpaid_sales(
 @router.get("/sales/export", response_class=StreamingResponse)
 def export_sales_to_excel(
     db: Session = Depends(get_db), 
-    current_user: models.User = Depends(auth.get_current_user_for_export)
+    current_user: models.User = Depends(auth.get_current_admin_or_supervisor_for_export)
 ):
     """Export sales data to Excel file"""
     sales_only = crud.get_sales_history(db, skip=0, limit=10000) # Use the new function

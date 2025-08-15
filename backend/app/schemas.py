@@ -42,6 +42,7 @@ class ProductCreate(ProductBase):
 
 class Product(ProductBase):
     id: int
+    is_archived: bool
 
     model_config = ConfigDict(from_attributes=True)
 

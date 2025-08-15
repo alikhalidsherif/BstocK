@@ -5,7 +5,11 @@ from sqlalchemy.orm import Session
 from .. import crud, models, schemas
 from ..schemas import ChangeRequestAction
 from ..database import get_db
-from ..auth import get_current_active_user, get_current_active_admin
+from ..auth import (
+    get_current_active_user,
+    get_current_active_admin,
+    get_current_active_admin_or_supervisor,
+)
 
 router = APIRouter(
     prefix="/api/inventory",
@@ -26,8 +30,8 @@ def request_inventory_change(
             raise HTTPException(status_code=400, detail="Barcode is required for this action")
         
         product = None
-        if request.action == ChangeRequestAction.delete:
-            # For delete, the barcode field actually contains the product ID
+        if request.action in [ChangeRequestAction.delete, ChangeRequestAction.archive, ChangeRequestAction.restore]:
+            # For destructive/state actions, the barcode field actually contains the product ID
             product = crud.get_product_by_id(db, product_id=int(request.barcode))
         else:
             product = crud.get_product_by_barcode(db, barcode=request.barcode)
@@ -90,7 +94,7 @@ def request_inventory_change(
 @router.get("/requests/pending", response_model=List[schemas.ChangeRequest])
 def get_pending_requests(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user),
+    current_user: models.User = Depends(get_current_active_admin_or_supervisor),
 ):
     return crud.get_pending_change_requests(db)
 
@@ -108,6 +112,21 @@ def approve_request(
         return approved_request
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/request/auto", response_model=schemas.ChangeHistory)
+def auto_request(
+    request: schemas.ChangeRequestSubmit,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_admin),
+):
+    # Admin-only: submit and immediately approve specific actions
+    if request.action not in [ChangeRequestAction.archive, ChangeRequestAction.restore]:
+        raise HTTPException(status_code=400, detail="Action not allowed for auto-approval")
+    created = request_inventory_change(request, db, current_user)  # type: ignore[arg-type]
+    approved = crud.approve_change_request(db, request_id=created.id, reviewer_id=current_user.id)
+    if approved is None:
+        raise HTTPException(status_code=404, detail="Request not found or not pending")
+    return approved
 
 @router.put("/requests/{request_id}/reject", response_model=schemas.ChangeHistory)
 def reject_request(

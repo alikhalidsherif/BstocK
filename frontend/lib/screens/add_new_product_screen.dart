@@ -150,24 +150,12 @@ class _AddNewProductScreenState extends State<AddNewProductScreen> {
                   _categoryController.text = selection;
                 },
                 fieldViewBuilder: (BuildContext context, TextEditingController fieldController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
-                  // Sync the field controller with our category controller
-                  if (fieldController.text != _categoryController.text) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        fieldController.text = _categoryController.text;
-                      }
-                    });
-                  }
                   return TextFormField(
                     controller: fieldController,
                     focusNode: fieldFocusNode,
                     decoration: const InputDecoration(labelText: 'Category'),
                     validator: (v) => v?.isEmpty == true ? 'Required' : null,
-                    onChanged: (text) {
-                      if (mounted) {
-                        _categoryController.text = text;
-                      }
-                    },
+                    onChanged: (text) => _categoryController.text = text,
                   );
                 },
               ),

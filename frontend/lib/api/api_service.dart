@@ -10,8 +10,8 @@ class ApiService {
   // Configure your API base URL once via environment-like constants.
   // For web builds, it will default to localhost; for device, you can override
   // using a const below or via a simple runtime override.
-  static const String defaultWebBase = 'http://127.0.0.1:8000/api';
-  static const String defaultDeviceBase = 'http://10.0.2.2:8000/api'; // Android emulator loopback
+  static const String defaultWebBase = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://127.0.0.1:8000/api');
+  static const String defaultDeviceBase = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000/api');
   static String? overrideBaseUrl;
 
   String get _baseUrl {
@@ -30,16 +30,27 @@ class ApiService {
     // Build WS URL from API base URL to always target the backend
     final api = Uri.parse(_baseUrl);
     final scheme = api.scheme == 'https' ? 'wss' : 'ws';
-    final wsUrl = Uri(scheme: scheme, host: api.host, port: api.port, path: '/ws/updates').toString();
-    _channel?.sink.close(ws_status.normalClosure);
-    _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-    _channel!.stream.listen((event) {
-      try {
-        final Map<String, dynamic> msg = jsonDecode(event);
-        onMessage(msg);
-      } catch (_) {}
-    }, onError: (_) {
-      // ignore for now
+    final wsBasePath = api.path.replaceAll(RegExp(r'/+$'), '').replaceFirst(RegExp(r'/api$'), '');
+    // Attach token from storage to authorize the websocket
+    final tokenFuture = _getToken();
+    tokenFuture.then((token) {
+      final wsUrl = Uri(
+        scheme: scheme,
+        host: api.host,
+        port: api.port,
+        path: '$wsBasePath/ws/updates',
+        queryParameters: token != null ? {'token': token} : null,
+      ).toString();
+      _channel?.sink.close(ws_status.normalClosure);
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      _channel!.stream.listen((event) {
+        try {
+          final Map<String, dynamic> msg = jsonDecode(event);
+          onMessage(msg);
+        } catch (_) {}
+      }, onError: (_) {
+        // ignore for now
+      });
     });
   }
 
@@ -86,9 +97,9 @@ class ApiService {
     await prefs.remove('token');
   }
 
-  Future<List<Product>> getProducts() async {
+  Future<List<Product>> getProducts({bool includeArchived = false}) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/products/'),
+      Uri.parse('$_baseUrl/products/?include_archived=${includeArchived ? 'true' : 'false'}'),
       headers: await _getHeaders(),
     );
 
@@ -147,6 +158,27 @@ class ApiService {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to submit change request: ${response.body}');
+    }
+  }
+
+  Future<ChangeHistory> submitAutoChangeRequest({
+    String? barcode,
+    required String action,
+    int? quantity,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/inventory/request/auto'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'barcode': barcode,
+        'action': action,
+        'quantity_change': quantity,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return ChangeHistory.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to auto-submit request: ${response.body}');
     }
   }
 
@@ -311,6 +343,30 @@ class ApiService {
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to delete product');
+    }
+  }
+
+  Future<Product> archiveProduct(int productId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/products/$productId/archive'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return Product.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to archive product: ${response.body}');
+    }
+  }
+
+  Future<Product> unarchiveProduct(int productId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/products/$productId/unarchive'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return Product.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to unarchive product: ${response.body}');
     }
   }
 

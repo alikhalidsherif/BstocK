@@ -76,4 +76,16 @@ class ChangeRequestProvider with ChangeNotifier {
       rethrow; // Rethrow the exception to be caught by the UI
     }
   }
+
+  Future<ChangeHistory> submitAutoRequest({
+    required String barcode,
+    required ChangeRequestAction action,
+    int? quantity,
+  }) async {
+    return _apiService.submitAutoChangeRequest(
+      barcode: barcode,
+      action: action.name,
+      quantity: quantity,
+    );
+  }
 } 

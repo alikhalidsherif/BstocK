@@ -44,6 +44,7 @@ class ProductProvider with ChangeNotifier {
   String _searchQuery = '';
   String? _selectedCategory;
   SortType _sortType = SortType.none;
+  bool _lastIncludeArchived = false;
 
   List<Product> get products => _products;
   bool get isLoading => _isLoading;
@@ -56,7 +57,7 @@ class ProductProvider with ChangeNotifier {
     _apiService.connectRealtime((msg) {
       final type = msg['type'];
       if (type == 'product.updated') {
-        fetchProducts();
+        fetchProducts(includeArchived: _lastIncludeArchived);
       }
     });
   }
@@ -64,23 +65,22 @@ class ProductProvider with ChangeNotifier {
   Future<void> fetchCategories() async {
     try {
       _categories = await _apiService.getCategories();
-      // Provide default categories if none exist
-      if (_categories.isEmpty) {
-        _categories = ['Electronics', 'Clothing', 'Books', 'Food', 'Tools', 'Other'];
-      }
       notifyListeners();
     } catch (e) {
-      // Provide default categories on error
-      _categories = ['Electronics', 'Clothing', 'Books', 'Food', 'Tools', 'Other'];
+      _categories = [];
       notifyListeners();
     }
   }
 
-  Future<void> fetchProducts() async {
+  Future<void> fetchProducts({bool includeArchived = false}) async {
     _isLoading = true;
+    _lastIncludeArchived = includeArchived;
     notifyListeners();
     try {
-      _allProducts = await _apiService.getProducts();
+      _allProducts = await _apiService.getProducts(includeArchived: includeArchived);
+      if (!includeArchived) {
+        _allProducts.removeWhere((p) => p.isArchived);
+      }
       _applyFiltersAndSort();
     } catch (e) {
       // Handle error, maybe set an error state
@@ -189,6 +189,26 @@ class ProductProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> archiveProduct(int productId) async {
+    final archived = await _apiService.archiveProduct(productId);
+    final idx = _allProducts.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _allProducts[idx] = archived;
+      _applyFiltersAndSort();
+      notifyListeners();
+    }
+  }
+
+  Future<void> unarchiveProduct(int productId) async {
+    final unarchived = await _apiService.unarchiveProduct(productId);
+    final idx = _allProducts.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      _allProducts[idx] = unarchived;
+      _applyFiltersAndSort();
+      notifyListeners();
     }
   }
 

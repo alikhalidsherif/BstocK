@@ -38,7 +38,7 @@ def get_current_active_admin(current_user: models.User = Depends(get_current_act
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
-@router.post("/users/", response_model=schemas.User)
+@router.post("/users/", response_model=schemas.User, dependencies=[Depends(auth.get_current_active_admin)])
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:

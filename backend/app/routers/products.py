@@ -6,6 +6,7 @@ import io
 from typing import List, Union
 
 from .. import crud, models, schemas
+from ..events import hub
 from ..database import get_db
 from .. import auth
 
@@ -45,19 +46,20 @@ def create_products(
 def read_products(
     skip: int = 0, 
     limit: int = 100, 
+    include_archived: bool = False,
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(auth.get_current_active_user)
 ):
-    products = crud.get_products(db, skip=skip, limit=limit)
+    products = crud.get_products(db, skip=skip, limit=limit, include_archived=include_archived)
     return products
 
 @router.get("/categories", response_model=List[str])
-def read_product_categories(db: Session = Depends(get_db)):
+def read_product_categories(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_active_user)):
     categories = crud.get_product_categories(db)
     return [category[0] for category in categories]
 
 @router.get("/export", response_class=StreamingResponse)
-def export_products_to_excel(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_for_export)):
+def export_products_to_excel(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_admin_or_supervisor_for_export)):
     """
     Export all products to an Excel file.
     """
@@ -216,6 +218,42 @@ def remove_product(
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+    # Log to history as an approved admin delete before removing the product
+    history_entry = models.ChangeHistory(
+        product_id=product.id,
+        quantity_change=None,
+        action=models.ChangeRequestAction.delete,
+        status=models.ChangeRequestStatus.approved,
+        requester_id=current_user.id,
+        reviewer_id=current_user.id,
+    )
+    db.add(history_entry)
+    db.commit()
+
     crud.delete_product(db=db, product=product)
+    # Broadcast so clients refresh
+    hub.publish_from_thread({"type": "product.updated", "product_id": product_id})
+    hub.publish_from_thread({"type": "history.updated"})
     return product
+
+@router.post("/{product_id}/archive", response_model=schemas.Product)
+def archive_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return crud.archive_product(db=db, product=product)
+
+@router.post("/{product_id}/unarchive", response_model=schemas.Product)
+def unarchive_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_admin)
+):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return crud.unarchive_product(db=db, product=product)

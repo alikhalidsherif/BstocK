@@ -39,6 +39,10 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
         return const Icon(Icons.add_circle_outline, color: Colors.white);
       case ChangeRequestAction.update:
         return const Icon(Icons.edit, color: Colors.white);
+      case ChangeRequestAction.archive:
+        return const Icon(Icons.archive, color: Colors.white);
+      case ChangeRequestAction.restore:
+        return const Icon(Icons.unarchive, color: Colors.white);
       case ChangeRequestAction.delete:
         return const Icon(Icons.delete_forever, color: Colors.white);
       case ChangeRequestAction.mark_paid:
@@ -98,14 +102,27 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
           widgets.add(Text('Price: \$$oldPrice → \$${request.newProductPrice!.toStringAsFixed(2)}'));
         }
         break;
-        
+       
+      case ChangeRequestAction.archive:
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+          widgets.add(const Text('Archive product'));
+        }
+        break;
+      case ChangeRequestAction.restore:
+        if (request.product != null) {
+          widgets.add(Text('Barcode: ${request.product!.barcode}'));
+          widgets.add(const Text('Restore product'));
+        }
+        break;
+       
       case ChangeRequestAction.delete:
         if (request.product != null) {
           widgets.add(Text('Barcode: ${request.product!.barcode}'));
           widgets.add(Text('This product will be deleted'));
         }
         break;
-        
+         
       case ChangeRequestAction.mark_paid:
         if (request.product != null) {
           widgets.add(Text('Barcode: ${request.product!.barcode}'));
@@ -156,6 +173,12 @@ class _PendingRequestsScreenState extends State<PendingRequestsScreen> {
                   break;
                 case ChangeRequestAction.update:
                   color = Colors.purple;
+                  break;
+                case ChangeRequestAction.archive:
+                  color = Colors.amber;
+                  break;
+                case ChangeRequestAction.restore:
+                  color = Colors.indigo;
                   break;
                 case ChangeRequestAction.delete:
                   color = Colors.red;

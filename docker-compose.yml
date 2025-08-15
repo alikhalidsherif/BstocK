@@ -27,12 +27,14 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://bstock_user:bstock_pass@db/stock_db
-      # SECRET_KEY should be overridden in a .env file or an environment variable
+      ENV: production
+      DISABLE_OPENAPI: "true"
+      # SECRET_KEY should be set via an external .env or secrets manager in production
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--reload"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--proxy-headers", "--forwarded-allow-ips", "*"]
 
 volumes:
   postgres_data: 

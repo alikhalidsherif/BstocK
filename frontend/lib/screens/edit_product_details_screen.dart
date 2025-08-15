@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/product_provider.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 
 class EditProductDetailsScreen extends StatefulWidget {
   final Product product;
@@ -74,14 +75,22 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
     }
   }
 
-  Future<void> _deleteProduct() async {
+  Future<void> _archiveProduct() async {
     try {
-      await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
-        action: ChangeRequestAction.delete,
-        barcode: widget.product.id.toString(),
-      );
+      final isAdmin = Provider.of<AuthProvider>(context, listen: false).user?.role == UserRole.admin;
+      if (isAdmin) {
+        await Provider.of<ChangeRequestProvider>(context, listen: false).submitAutoRequest(
+          action: ChangeRequestAction.archive,
+          barcode: widget.product.id.toString(),
+        );
+      } else {
+        await Provider.of<ChangeRequestProvider>(context, listen: false).submitRequest(
+          action: ChangeRequestAction.archive,
+          barcode: widget.product.id.toString(),
+        );
+      }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deletion request submitted!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Archive request submitted!')));
       context.go('/'); // Go back to the home screen
     } catch (e) {
       if (!mounted) return;
@@ -100,22 +109,22 @@ class _EditProductDetailsScreenState extends State<EditProductDetailsScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Icons.archive, color: Colors.orange),
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
                   return AlertDialog(
-                    title: const Text('Confirm Delete'),
-                    content: const Text('Are you sure you want to delete this product? This action cannot be undone.'),
+                    title: const Text('Confirm Archive'),
+                    content: const Text('Are you sure you want to archive this product? It will be hidden from lists but its history will be preserved.'),
                     actions: [
                       TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          _deleteProduct();
+                          _archiveProduct();
                         },
-                        child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                        child: const Text('Archive', style: TextStyle(color: Colors.orange)),
                       ),
                     ],
                   );

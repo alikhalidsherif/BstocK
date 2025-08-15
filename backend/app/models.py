@@ -42,6 +42,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
     category = Column(String, index=True)
+    is_archived = Column(Boolean, default=False, nullable=False)
 
     change_requests = relationship("ChangeRequest", back_populates="product")
     history_entries = relationship("ChangeHistory", back_populates="product")
@@ -57,6 +58,8 @@ class ChangeRequestAction(enum.Enum):
     update = "update"
     sell = "sell"
     create = "create"
+    archive = "archive"
+    restore = "restore"
     delete = "delete"
     mark_paid = "mark_paid"
 

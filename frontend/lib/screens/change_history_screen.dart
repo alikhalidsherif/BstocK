@@ -60,7 +60,8 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                 final entry = provider.history[index];
                 final actionText = entry.action.name.toUpperCase();
                 final statusText = entry.status.name.toUpperCase();
-                final productName = entry.product?.name ?? 'Product Not Found';
+                final productName = entry.product?.name ??
+                    (entry.action == ChangeRequestAction.delete ? 'Deleted Product' : 'Product Not Found');
                 final reviewerName = entry.reviewer?.username ?? 'N/A';
 
                 final Color color;
@@ -78,6 +79,14 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                   case ChangeRequestAction.create:
                     color = Colors.blue;
                     icon = Icons.add_circle_outline;
+                    break;
+                  case ChangeRequestAction.archive:
+                    color = Colors.amber;
+                    icon = Icons.archive;
+                    break;
+                  case ChangeRequestAction.restore:
+                    color = Colors.indigo;
+                    icon = Icons.unarchive;
                     break;
                   case ChangeRequestAction.delete:
                     color = Colors.red;

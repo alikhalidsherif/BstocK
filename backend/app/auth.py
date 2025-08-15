@@ -71,3 +71,18 @@ def get_current_active_admin(current_user: schemas.User = Depends(get_current_ac
     if current_user.role != schemas.UserRole.admin:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
+
+# Dependency to check if the user is an admin or supervisor
+def get_current_active_admin_or_supervisor(current_user: schemas.User = Depends(get_current_active_user)):
+    if current_user.role not in (schemas.UserRole.admin, schemas.UserRole.supervisor):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
+
+# Dependency for query-param-based auth requiring admin or supervisor (for downloads)
+def get_current_admin_or_supervisor_for_export(token: str = Query(None), db: Session = Depends(get_db)):
+    if token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    user = _get_user_from_token(token=token, db=db)
+    if user.role not in (schemas.UserRole.admin, schemas.UserRole.supervisor):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return user

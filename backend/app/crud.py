@@ -39,8 +39,11 @@ def get_product_by_barcode(db: Session, barcode: str):
 def get_product_by_id(db: Session, product_id: int):
     return db.query(models.Product).filter(models.Product.id == product_id).first()
 
-def get_products(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Product).offset(skip).limit(limit).all()
+def get_products(db: Session, skip: int = 0, limit: int = 100, include_archived: bool = False):
+    query = db.query(models.Product)
+    if not include_archived:
+        query = query.filter(models.Product.is_archived == False)
+    return query.offset(skip).limit(limit).all()
 
 def get_product_categories(db: Session):
     return db.query(models.Product.category).distinct().all()
@@ -60,8 +63,22 @@ def update_product(db: Session, product: models.Product, product_in: schemas.Pro
     db.refresh(product)
     return product
 
+def archive_product(db: Session, product: models.Product):
+    product.is_archived = True
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+def unarchive_product(db: Session, product: models.Product):
+    product.is_archived = False
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
 def delete_product(db: Session, product: models.Product):
-    # Before deleting the product, nullify foreign keys in history that reference it
+    # Nullify product_id in history to avoid FK issues, keep the history row
     db.query(models.ChangeHistory).filter(models.ChangeHistory.product_id == product.id).update(
         {models.ChangeHistory.product_id: None}, synchronize_session=False
     )
@@ -175,8 +192,14 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
         db_product = create_product(db, new_product_schema)
         db.commit() # Commit the new product to get an ID
         db.refresh(db_product)
+    elif db_request.action == models.ChangeRequestAction.archive:
+        # Will archive after logging to history
+        pass
+    elif db_request.action == models.ChangeRequestAction.restore:
+        # Will unarchive after logging to history
+        pass
     elif db_request.action == models.ChangeRequestAction.delete:
-        # The product will be deleted after logging to history.
+        # Will delete after logging to history
         pass
     elif db_request.action == models.ChangeRequestAction.mark_paid:
         # For mark_paid, update the specific history entry if provided
@@ -207,8 +230,8 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
     if db_request.action == models.ChangeRequestAction.create:
         quantity_for_history = db_request.new_product_quantity
     
-    # For delete actions, avoid linking the history entry to a product about to be removed
-    history_product_id = None if db_request.action == models.ChangeRequestAction.delete else (db_product.id if db_product else None)
+    # Keep history linked to the product for archive/delete actions so history remains meaningful
+    history_product_id = (db_product.id if db_product else None)
     history_entry = models.ChangeHistory(
         product_id=history_product_id,
         quantity_change=quantity_for_history,
@@ -221,12 +244,13 @@ def approve_change_request(db: Session, request_id: int, reviewer_id: int):
     )
     db.add(history_entry)
 
-    # Now, if the action was 'delete', detach FKs and delete the product
-    if db_request.action == models.ChangeRequestAction.delete:
-        if db_product:
-            # Detach the pending request from the product to avoid FK constraint during product deletion
-            db_request.product_id = None
-            db.add(db_request)
+    # Apply post-history action
+    if db_product:
+        if db_request.action == models.ChangeRequestAction.archive:
+            archive_product(db, db_product)
+        elif db_request.action == models.ChangeRequestAction.restore:
+            unarchive_product(db, db_product)
+        elif db_request.action == models.ChangeRequestAction.delete:
             delete_product(db, db_product)
 
     # Delete the original request
