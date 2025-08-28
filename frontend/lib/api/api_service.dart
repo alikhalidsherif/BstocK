@@ -8,20 +8,23 @@ import 'package:flutter/foundation.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // Configure your API base URL once via environment-like constants.
-  // For web builds, it will default to localhost; for device, you can override
-  // using a const below or via a simple runtime override.
-  static const String defaultWebBase = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://127.0.0.1:8000/api');
-  static const String defaultDeviceBase = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000/api');
+  // The name inside String.fromEnvironment MUST match the key you used in Vercel.
+  static const String apiUrl = String.fromEnvironment(
+      'FLUTTER_WEB_API_URL', // This name must be exact.
+      defaultValue: 'http://127.0.0.1:8000',
+  );
+  
+  // For mobile devices, we'll also support the same environment variable
+  static const String defaultDeviceBase = String.fromEnvironment('FLUTTER_WEB_API_URL', defaultValue: 'http://10.0.2.2:8000');
   static String? overrideBaseUrl;
 
   String get _baseUrl {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
     if (kIsWeb) {
-      return defaultWebBase;
+      return '${apiUrl}/api';
     } else {
       // For emulators, 10.0.2.2 routes to host machine. For real devices, change to your LAN IP.
-      return defaultDeviceBase;
+      return '${defaultDeviceBase}/api';
     }
   }
   String get baseUrl => _baseUrl;
