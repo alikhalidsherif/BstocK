@@ -1,66 +1,119 @@
-import os
-from pydantic import field_validator, Field
+from pydantic import computed_field, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # This nested class is the configuration for Pydantic itself
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8", 
-        extra="allow"  # This tells Pydantic to ignore extra fields instead of crashing
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="allow"
     )
 
-    # Database Configuration
-    DATABASE_URL: str = "sqlite:///./stock_dev.db"
+    # --- Part 1: Define fields to accept RAW string input from Render ---
+    # We use an alias to connect the environment variable (e.g., 'DATABASE_URL')
+    # to our internal, private variable (e.g., '_DATABASE_URL')
     
-    # Security Configuration
-    SECRET_KEY: str = "change_me_in_production"
-    JWT_ALGORITHM: str = "HS256"  # Standardized field name
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-
-    # Environment / Runtime Configuration
-    ENVIRONMENT: str = "development"  # Standardized field name
+    _DATABASE_URL: str = Field("sqlite:///./stock_dev.db", alias='DATABASE_URL')
+    _SECRET_KEY: str = Field("change_me_in_production", alias='SECRET_KEY')
+    _ENVIRONMENT: str = Field("development", alias='ENVIRONMENT')
+    _JWT_ALGORITHM: str = Field("HS256", alias='JWT_ALGORITHM')
+    _ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(30, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
     
-    # CORS Configuration
-    # For production, set specific allowed origins. For development, use regex pattern
-    CORS_ALLOW_ORIGINS: list[str] = []  # Default value
-    CORS_ALLOW_ORIGIN_REGEX: str | None = r"http://(localhost|127\.0\.0\.1):\d+"
-    
-    # CORS Additional Settings
-    CORS_ALLOW_CREDENTIALS: bool = False
-    CORS_ALLOW_METHODS: str | list[str] = "GET,POST,PUT,DELETE,OPTIONS,PATCH"
-    CORS_ALLOW_HEADERS: str | list[str] = "Content-Type,Authorization,Accept,Origin,User-Agent"
-
-    @field_validator("CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode='before')
-    @classmethod
-    def assemble_cors_list(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str) and not v.startswith('['):
-            return [item.strip() for item in v.split(',')]
-        return v
-
-    # SPECIAL VALIDATOR FOR ORIGINS - Handles Render's weird list behavior
-    @field_validator("CORS_ALLOW_ORIGINS", mode='before')
-    @classmethod
-    def assemble_origins_list(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
-            # This handles the case where Render provides ['https://...']
-            # It splits any comma-separated strings within the list
-            return [origin.strip() for item in v for origin in item.split(',') if origin.strip()]
-        if isinstance(v, str) and v.strip():
-            # This handles the normal case of a comma-separated string
-            return [item.strip() for item in v.split(',') if item.strip()]
-        return []
+    # These are the ones causing the error. We will read them as simple strings.
+    _CORS_ALLOW_ORIGINS: str = Field("", alias='CORS_ALLOW_ORIGINS')
+    _CORS_ALLOW_ORIGIN_REGEX: str | None = Field(r"http://(localhost|127\.0\.0\.1):\d+", alias='CORS_ALLOW_ORIGIN_REGEX')
+    _CORS_ALLOW_METHODS: str = Field("GET,POST,PUT,DELETE,OPTIONS,PATCH", alias='CORS_ALLOW_METHODS')
+    _CORS_ALLOW_HEADERS: str = Field("Content-Type,Authorization,Accept,Origin,User-Agent", alias='CORS_ALLOW_HEADERS')
+    _CORS_ALLOW_CREDENTIALS: bool = Field(False, alias='CORS_ALLOW_CREDENTIALS')
     
     # API Documentation Configuration
-    DISABLE_OPENAPI: bool = False
+    _DISABLE_OPENAPI: bool = Field(False, alias='DISABLE_OPENAPI')
     
     # Database Migration Configuration
-    AUTO_CREATE_TABLES: bool = True
+    _AUTO_CREATE_TABLES: bool = Field(True, alias='AUTO_CREATE_TABLES')
     
     # Server Configuration
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    _HOST: str = Field("0.0.0.0", alias='HOST')
+    _PORT: int = Field(8000, alias='PORT')
+
+    # --- Part 2: Create computed properties that the rest of your app will use ---
+    # These are clean, correctly typed, and safe to use everywhere else.
+    
+    @computed_field
+    @property
+    def DATABASE_URL(self) -> str:
+        return self._DATABASE_URL
+
+    @computed_field
+    @property
+    def SECRET_KEY(self) -> str:
+        return self._SECRET_KEY
+
+    @computed_field
+    @property
+    def ENVIRONMENT(self) -> str:
+        return self._ENVIRONMENT
+
+    @computed_field
+    @property
+    def JWT_ALGORITHM(self) -> str:
+        return self._JWT_ALGORITHM
+
+    @computed_field
+    @property
+    def ACCESS_TOKEN_EXPIRE_MINUTES(self) -> int:
+        return self._ACCESS_TOKEN_EXPIRE_MINUTES
+        
+    @computed_field
+    @property
+    def CORS_ALLOW_CREDENTIALS(self) -> bool:
+        return self._CORS_ALLOW_CREDENTIALS
+
+    @computed_field
+    @property
+    def CORS_ALLOW_ORIGIN_REGEX(self) -> str | None:
+        return self._CORS_ALLOW_ORIGIN_REGEX
+
+    @computed_field
+    @property
+    def CORS_ALLOW_ORIGINS(self) -> list[str]:
+        if not self._CORS_ALLOW_ORIGINS:
+            return []
+        return [item.strip() for item in self._CORS_ALLOW_ORIGINS.split(',') if item.strip()]
+
+    @computed_field
+    @property
+    def CORS_ALLOW_METHODS(self) -> list[str]:
+        if not self._CORS_ALLOW_METHODS:
+            return []
+        return [item.strip() for item in self._CORS_ALLOW_METHODS.split(',') if item.strip()]
+
+    @computed_field
+    @property
+    def CORS_ALLOW_HEADERS(self) -> list[str]:
+        if not self._CORS_ALLOW_HEADERS:
+            return []
+        return [item.strip() for item in self._CORS_ALLOW_HEADERS.split(',') if item.strip()]
+
+    @computed_field
+    @property
+    def DISABLE_OPENAPI(self) -> bool:
+        return self._DISABLE_OPENAPI
+
+    @computed_field
+    @property
+    def AUTO_CREATE_TABLES(self) -> bool:
+        return self._AUTO_CREATE_TABLES
+
+    @computed_field
+    @property
+    def HOST(self) -> str:
+        return self._HOST
+
+    @computed_field
+    @property
+    def PORT(self) -> int:
+        return self._PORT
 
 
 settings = Settings()
