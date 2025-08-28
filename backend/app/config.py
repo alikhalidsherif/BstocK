@@ -9,111 +9,110 @@ class Settings(BaseSettings):
         extra="allow"
     )
 
-    # --- Part 1: Define fields to accept RAW string input from Render ---
-    # We use an alias to connect the environment variable (e.g., 'DATABASE_URL')
-    # to our internal, private variable (e.g., '_DATABASE_URL')
+    # --- Part 1: Define fields with a '_raw' suffix ---
+    # Pydantic will accept these names (no leading underscores).
     
-    _DATABASE_URL: str = Field("sqlite:///./stock_dev.db", alias='DATABASE_URL')
-    _SECRET_KEY: str = Field("change_me_in_production", alias='SECRET_KEY')
-    _ENVIRONMENT: str = Field("development", alias='ENVIRONMENT')
-    _JWT_ALGORITHM: str = Field("HS256", alias='JWT_ALGORITHM')
-    _ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(30, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
+    DATABASE_URL_raw: str = Field("sqlite:///./stock_dev.db", alias='DATABASE_URL')
+    SECRET_KEY_raw: str = Field("change_me_in_production", alias='SECRET_KEY')
+    ENVIRONMENT_raw: str = Field("development", alias='ENVIRONMENT')
+    JWT_ALGORITHM_raw: str = Field("HS256", alias='JWT_ALGORITHM')
+    ACCESS_TOKEN_EXPIRE_MINUTES_raw: int = Field(30, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
     
-    # These are the ones causing the error. We will read them as simple strings.
-    _CORS_ALLOW_ORIGINS: str = Field("", alias='CORS_ALLOW_ORIGINS')
-    _CORS_ALLOW_ORIGIN_REGEX: str | None = Field(r"http://(localhost|127\.0\.0\.1):\d+", alias='CORS_ALLOW_ORIGIN_REGEX')
-    _CORS_ALLOW_METHODS: str = Field("GET,POST,PUT,DELETE,OPTIONS,PATCH", alias='CORS_ALLOW_METHODS')
-    _CORS_ALLOW_HEADERS: str = Field("Content-Type,Authorization,Accept,Origin,User-Agent", alias='CORS_ALLOW_HEADERS')
-    _CORS_ALLOW_CREDENTIALS: bool = Field(False, alias='CORS_ALLOW_CREDENTIALS')
+    # These are the problematic fields that caused parsing errors
+    CORS_ALLOW_ORIGINS_raw: str = Field("", alias='CORS_ALLOW_ORIGINS')
+    CORS_ALLOW_ORIGIN_REGEX_raw: str | None = Field(r"http://(localhost|127\.0\.0\.1):\d+", alias='CORS_ALLOW_ORIGIN_REGEX')
+    CORS_ALLOW_METHODS_raw: str = Field("GET,POST,PUT,DELETE,OPTIONS,PATCH", alias='CORS_ALLOW_METHODS')
+    CORS_ALLOW_HEADERS_raw: str = Field("Content-Type,Authorization,Accept,Origin,User-Agent", alias='CORS_ALLOW_HEADERS')
+    CORS_ALLOW_CREDENTIALS_raw: bool = Field(False, alias='CORS_ALLOW_CREDENTIALS')
     
     # API Documentation Configuration
-    _DISABLE_OPENAPI: bool = Field(False, alias='DISABLE_OPENAPI')
+    DISABLE_OPENAPI_raw: bool = Field(False, alias='DISABLE_OPENAPI')
     
     # Database Migration Configuration
-    _AUTO_CREATE_TABLES: bool = Field(True, alias='AUTO_CREATE_TABLES')
+    AUTO_CREATE_TABLES_raw: bool = Field(True, alias='AUTO_CREATE_TABLES')
     
     # Server Configuration
-    _HOST: str = Field("0.0.0.0", alias='HOST')
-    _PORT: int = Field(8000, alias='PORT')
+    HOST_raw: str = Field("0.0.0.0", alias='HOST')
+    PORT_raw: int = Field(8000, alias='PORT')
 
     # --- Part 2: Create computed properties that the rest of your app will use ---
-    # These are clean, correctly typed, and safe to use everywhere else.
+    # These have the clean, public names that your app expects.
     
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        return self._DATABASE_URL
+        return self.DATABASE_URL_raw
 
     @computed_field
     @property
     def SECRET_KEY(self) -> str:
-        return self._SECRET_KEY
+        return self.SECRET_KEY_raw
 
     @computed_field
     @property
     def ENVIRONMENT(self) -> str:
-        return self._ENVIRONMENT
+        return self.ENVIRONMENT_raw
 
     @computed_field
     @property
     def JWT_ALGORITHM(self) -> str:
-        return self._JWT_ALGORITHM
+        return self.JWT_ALGORITHM_raw
 
     @computed_field
     @property
     def ACCESS_TOKEN_EXPIRE_MINUTES(self) -> int:
-        return self._ACCESS_TOKEN_EXPIRE_MINUTES
+        return self.ACCESS_TOKEN_EXPIRE_MINUTES_raw
         
     @computed_field
     @property
     def CORS_ALLOW_CREDENTIALS(self) -> bool:
-        return self._CORS_ALLOW_CREDENTIALS
+        return self.CORS_ALLOW_CREDENTIALS_raw
 
     @computed_field
     @property
     def CORS_ALLOW_ORIGIN_REGEX(self) -> str | None:
-        return self._CORS_ALLOW_ORIGIN_REGEX
+        return self.CORS_ALLOW_ORIGIN_REGEX_raw
 
     @computed_field
     @property
     def CORS_ALLOW_ORIGINS(self) -> list[str]:
-        if not self._CORS_ALLOW_ORIGINS:
+        if not self.CORS_ALLOW_ORIGINS_raw:
             return []
-        return [item.strip() for item in self._CORS_ALLOW_ORIGINS.split(',') if item.strip()]
+        return [item.strip() for item in self.CORS_ALLOW_ORIGINS_raw.split(',') if item.strip()]
 
     @computed_field
     @property
     def CORS_ALLOW_METHODS(self) -> list[str]:
-        if not self._CORS_ALLOW_METHODS:
+        if not self.CORS_ALLOW_METHODS_raw:
             return []
-        return [item.strip() for item in self._CORS_ALLOW_METHODS.split(',') if item.strip()]
+        return [item.strip() for item in self.CORS_ALLOW_METHODS_raw.split(',') if item.strip()]
 
     @computed_field
     @property
     def CORS_ALLOW_HEADERS(self) -> list[str]:
-        if not self._CORS_ALLOW_HEADERS:
+        if not self.CORS_ALLOW_HEADERS_raw:
             return []
-        return [item.strip() for item in self._CORS_ALLOW_HEADERS.split(',') if item.strip()]
+        return [item.strip() for item in self.CORS_ALLOW_HEADERS_raw.split(',') if item.strip()]
 
     @computed_field
     @property
     def DISABLE_OPENAPI(self) -> bool:
-        return self._DISABLE_OPENAPI
+        return self.DISABLE_OPENAPI_raw
 
     @computed_field
     @property
     def AUTO_CREATE_TABLES(self) -> bool:
-        return self._AUTO_CREATE_TABLES
+        return self.AUTO_CREATE_TABLES_raw
 
     @computed_field
     @property
     def HOST(self) -> str:
-        return self._HOST
+        return self.HOST_raw
 
     @computed_field
     @property
     def PORT(self) -> int:
-        return self._PORT
+        return self.PORT_raw
 
 
 settings = Settings()
