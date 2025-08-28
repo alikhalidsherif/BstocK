@@ -1,4 +1,5 @@
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -25,13 +26,16 @@ class Settings(BaseSettings):
     )
     
     # CORS Additional Settings
-    CORS_ALLOW_CREDENTIALS: bool = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
-    CORS_ALLOW_METHODS: list[str] = [
-        method.strip() for method in os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS,PATCH").split(",")
-    ]
-    CORS_ALLOW_HEADERS: list[str] = [
-        header.strip() for header in os.getenv("CORS_ALLOW_HEADERS", "Content-Type,Authorization,Accept,Origin,User-Agent").split(",")
-    ]
+    CORS_ALLOW_CREDENTIALS: bool = False
+    CORS_ALLOW_METHODS: str | list[str] = "GET,POST,PUT,DELETE,OPTIONS,PATCH"  # Default value
+    CORS_ALLOW_HEADERS: str | list[str] = "Content-Type,Authorization,Accept,Origin,User-Agent"  # Default value
+
+    @field_validator("CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode='before')
+    @classmethod
+    def assemble_cors_list(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str) and not v.startswith('['):
+            return [item.strip() for item in v.split(',')]
+        return v
     
     # API Documentation Configuration
     DISABLE_OPENAPI: bool = os.getenv("DISABLE_OPENAPI", "false").lower() == "true"
