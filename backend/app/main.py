@@ -59,10 +59,10 @@ def read_root():
 
 @app.get("/healthz")
 def health_check():
-    return {"status": "ok", "env": settings.ENV}
+    return {"status": "ok", "env": settings.ENVIRONMENT}
 
 # Basic startup validation
 @app.on_event("startup")
 def validate_settings_on_startup():
-    if settings.ENV.lower() == "production" and settings.SECRET_KEY == "change_me_in_production":
+    if settings.ENVIRONMENT.lower() == "production" and settings.SECRET_KEY == "change_me_in_production":
         raise RuntimeError("SECURITY: SECRET_KEY must be set in production")
