@@ -31,6 +31,11 @@
 
   <title>bstock_app</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Force Flutter to use HTML renderer for better performance -->
+  <script>
+    window.flutterWebRenderer = 'html';
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

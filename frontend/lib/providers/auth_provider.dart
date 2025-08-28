@@ -5,6 +5,13 @@ import '../models/models.dart';
 
 enum AuthStatus { uninitialized, authenticated, unauthenticated }
 
+class AuthResult {
+  final bool success;
+  final String? errorMessage;
+  
+  AuthResult({required this.success, this.errorMessage});
+}
+
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   AuthStatus _status = AuthStatus.uninitialized;
@@ -40,7 +47,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<AuthResult> login(String username, String password) async {
     try {
       final response = await _apiService.login(username, password);
       _token = response['access_token'];
@@ -48,11 +55,11 @@ class AuthProvider with ChangeNotifier {
       _user = await _apiService.getCurrentUser();
       _status = AuthStatus.authenticated;
       notifyListeners();
-      return true;
+      return AuthResult(success: true);
     } catch (e) {
       _status = AuthStatus.unauthenticated;
       notifyListeners();
-      return false;
+      return AuthResult(success: false, errorMessage: e.toString());
     }
   }
 

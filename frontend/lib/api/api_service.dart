@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,35 @@ import 'package:web_socket_channel/status.dart' as ws_status;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
+
+// Custom exception classes for better error handling
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+  @override
+  String toString() => message;
+}
+
+class ServerException implements Exception {
+  final String message;
+  ServerException(this.message);
+  @override
+  String toString() => message;
+}
+
+class NetworkException implements Exception {
+  final String message;
+  NetworkException(this.message);
+  @override
+  String toString() => message;
+}
+
+class TimeoutAuthException implements Exception {
+  final String message;
+  TimeoutAuthException(this.message);
+  @override
+  String toString() => message;
+}
 
 class ApiService {
   // The name inside String.fromEnvironment MUST match the key you used in Vercel.
@@ -80,19 +110,43 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> login(String username, String password) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/token'),
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {'username': username, 'password': password},
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/token'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {'username': username, 'password': password},
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', data['access_token']);
-      return data;
-    } else {
-      throw Exception('Failed to login. Status code: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['access_token']);
+        return data;
+      } else if (response.statusCode == 401) {
+        // Invalid credentials
+        throw AuthException('Invalid username or password. Please check your credentials and try again.');
+      } else if (response.statusCode == 422) {
+        // Validation error (malformed request)
+        throw AuthException('Invalid login format. Please check your input.');
+      } else if (response.statusCode >= 500) {
+        // Server error
+        throw ServerException('Server error occurred. Please try again later or contact support.');
+      } else {
+        // Other HTTP errors
+        throw AuthException('Login failed. Please try again. (Error: ${response.statusCode})');
+      }
+    } on TimeoutException catch (_) {
+      throw TimeoutAuthException('Server took too long to respond. Please check your internet connection and try again.');
+    } on http.ClientException catch (_) {
+      throw NetworkException('Unable to connect to the server. Please check your internet connection.');
+    } on FormatException catch (_) {
+      throw ServerException('Server returned invalid data. Please try again later.');
+    } catch (e) {
+      if (e is AuthException || e is ServerException || e is NetworkException) {
+        rethrow; // Re-throw our custom exceptions
+      }
+      // Unknown error
+      throw NetworkException('An unexpected error occurred. Please check your internet connection and try again.');
     }
   }
 
@@ -102,32 +156,44 @@ class ApiService {
   }
 
   Future<List<Product>> getProducts({bool includeArchived = false}) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/products/?include_archived=${includeArchived ? 'true' : 'false'}'),
-      headers: await _getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/products/?include_archived=${includeArchived ? 'true' : 'false'}'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 200) {
-      List<dynamic> body = jsonDecode(response.body);
-      List<Product> products = body.map((dynamic item) => Product.fromJson(item)).toList();
-      return products;
-    } else {
-      throw Exception('Failed to load products');
+      if (response.statusCode == 200) {
+        List<dynamic> body = jsonDecode(response.body);
+        List<Product> products = body.map((dynamic item) => Product.fromJson(item)).toList();
+        return products;
+      } else {
+        throw Exception('Failed to load products');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to load products: $e');
     }
   }
 
   Future<Product?> getProductByBarcode(String barcode) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/products/$barcode'),
-      headers: await _getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/products/$barcode'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 200) {
-      return Product.fromJson(jsonDecode(response.body));
-    } else if (response.statusCode == 404) {
-      return null; // Explicitly return null when product is not found
-    } else {
-      throw Exception('Failed to load product');
+      if (response.statusCode == 200) {
+        return Product.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 404) {
+        return null; // Explicitly return null when product is not found
+      } else {
+        throw Exception('Failed to load product');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to load product: $e');
     }
   }
 
@@ -143,25 +209,31 @@ class ApiService {
     int? newProductQuantity,
     String? newProductCategory,
   }) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/inventory/request'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
-        'barcode': barcode,
-        'action': action,
-        'quantity_change': quantity,
-        'buyer_name': buyerName,
-        'payment_status': paymentStatus,
-        'new_product_name': newProductName,
-        'new_product_barcode': newProductBarcode,
-        'new_product_price': newProductPrice,
-        'new_product_quantity': newProductQuantity,
-        'new_product_category': newProductCategory,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/inventory/request'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'barcode': barcode,
+          'action': action,
+          'quantity_change': quantity,
+          'buyer_name': buyerName,
+          'payment_status': paymentStatus,
+          'new_product_name': newProductName,
+          'new_product_barcode': newProductBarcode,
+          'new_product_price': newProductPrice,
+          'new_product_quantity': newProductQuantity,
+          'new_product_category': newProductCategory,
+        }),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to submit change request: ${response.body}');
+      if (response.statusCode != 200) {
+        throw Exception('Failed to submit change request: ${response.body}');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to submit change request: $e');
     }
   }
 
@@ -187,83 +259,115 @@ class ApiService {
   }
 
   Future<Product> createProduct(Product product) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/products/'),
-      headers: await _getHeaders(),
-      body: jsonEncode({
-        'barcode': product.barcode,
-        'name': product.name,
-        'price': product.price,
-        'quantity': product.quantity,
-        'category': product.category,
-      }),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/products/'),
+        headers: await _getHeaders(),
+        body: jsonEncode({
+          'barcode': product.barcode,
+          'name': product.name,
+          'price': product.price,
+          'quantity': product.quantity,
+          'category': product.category,
+        }),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 201) {
-      final List<dynamic> body = jsonDecode(response.body);
-      if (body.isNotEmpty) {
-        return Product.fromJson(body.first);
+      if (response.statusCode == 201) {
+        final List<dynamic> body = jsonDecode(response.body);
+        if (body.isNotEmpty) {
+          return Product.fromJson(body.first);
+        } else {
+          throw Exception('Failed to create product: Empty response from server.');
+        }
+      } else if (response.statusCode == 409) {
+        throw Exception('Product with this barcode already exists.');
       } else {
-        throw Exception('Failed to create product: Empty response from server.');
+        throw Exception('Failed to create product: ${response.body}');
       }
-    } else if (response.statusCode == 409) {
-      throw Exception('Product with this barcode already exists.');
-    } else {
-      throw Exception('Failed to create product: ${response.body}');
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      rethrow; // Re-throw to preserve specific error messages
     }
   }
 
   Future<User> getCurrentUser() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/users/me/'),
-      headers: await _getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/users/me/'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 200) {
-      return User.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to get current user.');
+      if (response.statusCode == 200) {
+        return User.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to get current user.');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to get current user: $e');
     }
   }
 
   Future<List<ChangeRequest>> getPendingRequests() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/inventory/requests/pending'),
-      headers: await _getHeaders(),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/inventory/requests/pending'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
 
-    if (response.statusCode == 200) {
-      List<dynamic> body = jsonDecode(response.body);
-      List<ChangeRequest> requests = body.map((dynamic item) => ChangeRequest.fromJson(item)).toList();
-      return requests;
-    } else {
-      throw Exception('Failed to load pending requests');
+      if (response.statusCode == 200) {
+        List<dynamic> body = jsonDecode(response.body);
+        List<ChangeRequest> requests = body.map((dynamic item) => ChangeRequest.fromJson(item)).toList();
+        return requests;
+      } else {
+        throw Exception('Failed to load pending requests');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to load pending requests: $e');
     }
   }
 
   Future<ChangeHistory> approveRequest(int requestId) async {
-    final response = await http.put(
-      Uri.parse('$_baseUrl/inventory/requests/$requestId/approve'),
-      headers: await _getHeaders(),
-    );
-    if (response.statusCode == 200) {
-      // The backend now returns the ChangeHistory object
-      return ChangeHistory.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to approve request: ${response.body}');
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/inventory/requests/$requestId/approve'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
+      
+      if (response.statusCode == 200) {
+        // The backend now returns the ChangeHistory object
+        return ChangeHistory.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to approve request: ${response.body}');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to approve request: $e');
     }
   }
 
   Future<ChangeHistory> rejectRequest(int requestId) async {
-    final response = await http.put(
-      Uri.parse('$_baseUrl/inventory/requests/$requestId/reject'),
-      headers: await _getHeaders(),
-    );
-    if (response.statusCode == 200) {
-      // The backend now returns the ChangeHistory object
-      return ChangeHistory.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to reject request: ${response.body}');
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/inventory/requests/$requestId/reject'),
+        headers: await _getHeaders(),
+      ).timeout(const Duration(seconds: 90));
+      
+      if (response.statusCode == 200) {
+        // The backend now returns the ChangeHistory object
+        return ChangeHistory.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to reject request: ${response.body}');
+      }
+    } on TimeoutException catch (_) {
+      throw Exception('Server took too long to respond. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to reject request: $e');
     }
   }
 

@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(
+      final result = await authProvider.login(
         _usernameController.text,
         _passwordController.text,
       );
@@ -33,16 +33,56 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
 
-        if (!success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login Failed. Please check your credentials.'),
-              backgroundColor: Colors.red,
-            ),
-          );
+        if (!result.success) {
+          _showErrorSnackBar(result.errorMessage ?? 'Login failed. Please try again.');
         }
       }
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    Color backgroundColor;
+    IconData icon;
+    
+    // Determine color and icon based on error type
+    if (message.contains('Invalid username or password')) {
+      backgroundColor = Colors.red.shade700;
+      icon = Icons.person_off;
+    } else if (message.contains('Server took too long') || message.contains('timeout')) {
+      backgroundColor = Colors.orange.shade700;
+      icon = Icons.access_time;
+    } else if (message.contains('Unable to connect') || message.contains('internet connection')) {
+      backgroundColor = Colors.blue.shade700;
+      icon = Icons.wifi_off;
+    } else if (message.contains('Server error') || message.contains('contact support')) {
+      backgroundColor = Colors.purple.shade700;
+      icon = Icons.bug_report;
+    } else {
+      backgroundColor = Colors.red.shade700;
+      icon = Icons.error;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   @override
