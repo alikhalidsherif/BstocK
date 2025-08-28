@@ -67,7 +67,12 @@ def login_for_access_token(response: Response, db: Session = Depends(get_db), fo
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/users/me/", response_model=schemas.User)
-def read_users_me(current_user: models.User = Depends(get_current_active_user)):
+def read_users_me(response: Response, current_user: models.User = Depends(get_current_active_user)):
+    # Brute-force CORS fix - manually add headers to bypass Cloudflare issues
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    
     return current_user
 
 @router.get("/users/", response_model=List[schemas.User], dependencies=[Depends(get_current_active_admin)])
