@@ -1,5 +1,6 @@
 import 'package:bstock_app/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,12 +38,34 @@ class AdminDashboardScreen extends StatelessWidget {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx'],
+      withData: true, // Important for web platform
     );
-    if (result != null && result.files.single.path != null) {
-      final path = result.files.single.path!;
+    
+    if (result != null && result.files.single.name.isNotEmpty) {
+      final file = result.files.single;
       
       try {
-        final response = await ApiService().importProductsFromExcel(path);
+        Map<String, dynamic> response;
+        
+        if (kIsWeb) {
+          // For web platform, use bytes
+          if (file.bytes == null) {
+            throw Exception('File data not available');
+          }
+          response = await ApiService().importProductsFromExcel(
+            fileBytes: file.bytes!,
+            fileName: file.name,
+          );
+        } else {
+          // For mobile platforms, use file path
+          if (file.path == null) {
+            throw Exception('File path not available');
+          }
+          response = await ApiService().importProductsFromExcel(
+            filePath: file.path!,
+          );
+        }
+        
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

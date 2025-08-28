@@ -1,11 +1,28 @@
+# Core FastAPI and ASGI server
 fastapi==0.116.1
 uvicorn[standard]==0.30.6
+
+# Production WSGI server for PaaS deployment
+gunicorn==21.2.0
+
+# Database and ORM
 SQLAlchemy==2.0.25
 psycopg2-binary==2.9.9
+
+# Configuration and settings
 pydantic-settings==2.10.1
+
+# Authentication and security
 passlib[bcrypt]==1.7.4
-bcrypt==3.2.0
+bcrypt==4.2.0
 python-jose[cryptography]==3.3.0
-python-multipart==0.0.9 
-pandas==2.2.1
-openpyxl==3.1.2
+
+# File uploads and form data
+python-multipart==0.0.9
+
+# Data processing and export
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Environment variables (optional but recommended)
+python-dotenv==1.0.1

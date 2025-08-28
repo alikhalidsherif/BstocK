@@ -5,9 +5,9 @@ services:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_USER: bstock_user
-      POSTGRES_PASSWORD: bstock_pass
-      POSTGRES_DB: stock_db
+      POSTGRES_USER: ${POSTGRES_USER:-bstock_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bstock_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-stock_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -26,15 +26,16 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://bstock_user:bstock_pass@db/stock_db
-      ENV: production
-      DISABLE_OPENAPI: "true"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bstock_user}:${POSTGRES_PASSWORD:-bstock_pass}@db/${POSTGRES_DB:-stock_db}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DISABLE_OPENAPI: ${DISABLE_OPENAPI:-true}
+      SECRET_KEY: ${SECRET_KEY}
       # SECRET_KEY should be set via an external .env or secrets manager in production
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    # Command is now handled by the Dockerfile with environment variable support
 
 volumes:
   postgres_data: 

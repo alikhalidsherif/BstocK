@@ -24,16 +24,25 @@ app = FastAPI(
     redoc_url=redoc_url,
 )
 
-# CORS Middleware
+# CORS Middleware Configuration
 cors_kwargs = {
-    "allow_credentials": False,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
+    "allow_credentials": settings.CORS_ALLOW_CREDENTIALS,
+    "allow_methods": settings.CORS_ALLOW_METHODS,
+    "allow_headers": settings.CORS_ALLOW_HEADERS,
 }
+
+# Priority: Use explicit allowed origins if set, otherwise fall back to regex for development
 if settings.CORS_ALLOW_ORIGINS:
     cors_kwargs["allow_origins"] = settings.CORS_ALLOW_ORIGINS
+    print(f"CORS: Allowing specific origins: {settings.CORS_ALLOW_ORIGINS}")
 elif settings.CORS_ALLOW_ORIGIN_REGEX:
     cors_kwargs["allow_origin_regex"] = settings.CORS_ALLOW_ORIGIN_REGEX
+    print(f"CORS: Using regex pattern: {settings.CORS_ALLOW_ORIGIN_REGEX}")
+else:
+    # Fallback to localhost for development
+    cors_kwargs["allow_origins"] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    print("CORS: Using localhost fallback")
+
 app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 # Include inventory, products, and history routers first to avoid prefix clash

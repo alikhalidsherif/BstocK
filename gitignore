@@ -41,3 +41,7 @@ backend/app/routers/__pycache__/
 
 # Docker
 .dockerignore 
+
+# Ignore environment configuration files
+.env
+*/.env

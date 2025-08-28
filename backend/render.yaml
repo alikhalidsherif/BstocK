@@ -1,0 +1,37 @@
+# Render.com deployment configuration
+# This file can be used for Infrastructure as Code deployment on Render
+# Place this in your repository root and connect your GitHub repo to Render
+
+services:
+  - type: web
+    name: bstock-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 100
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true  # Render will generate a secure random value
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bstock-db
+          property: connectionString
+      - key: DISABLE_OPENAPI
+        value: "true"
+      - key: AUTO_CREATE_TABLES
+        value: "false"
+      - key: CORS_ALLOW_ORIGINS
+        value: "https://my-flutter-app-placeholder.vercel.app"
+      - key: CORS_ALLOW_CREDENTIALS
+        value: "false"
+      - key: CORS_ALLOW_METHODS
+        value: "GET,POST,PUT,DELETE,OPTIONS,PATCH"
+      - key: CORS_ALLOW_HEADERS
+        value: "Content-Type,Authorization,Accept,Origin,User-Agent"
+
+databases:
+  - name: bstock-db
+    databaseName: bstock_production
+    user: bstock_user
+    # Render will create and manage the PostgreSQL database

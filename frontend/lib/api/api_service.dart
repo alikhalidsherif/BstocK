@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as ws_status;
@@ -302,10 +303,31 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> importProductsFromExcel(String filePath) async {
+  Future<Map<String, dynamic>> importProductsFromExcel({
+    String? filePath, 
+    Uint8List? fileBytes, 
+    String? fileName
+  }) async {
     var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/products/import'));
     request.headers.addAll(await _getHeaders());
-    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    
+    if (kIsWeb) {
+      // For web platform, use bytes
+      if (fileBytes == null || fileName == null) {
+        throw Exception('File bytes and filename are required for web platform');
+      }
+      request.files.add(http.MultipartFile.fromBytes(
+        'file', 
+        fileBytes,
+        filename: fileName,
+      ));
+    } else {
+      // For mobile platforms, use file path
+      if (filePath == null) {
+        throw Exception('File path is required for mobile platform');
+      }
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    }
     
     var response = await request.send();
     final responseData = await response.stream.bytesToString();
