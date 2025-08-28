@@ -1,68 +1,312 @@
-# BstocK
+# BstocK - Inventory Management System
 
-A stock management application built with Flutter and FastAPI.
+<div align="center">
+  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Render" />
+  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
+</div>
 
-## Features
+## 📋 Overview
 
-- User authentication with JWT
-- Role-based access control (Admin, Supervisor, Clerk)
-- Product management (CRUD)
-- Inventory change requests (add, sell)
-- Request approval system
-- Change history and audit trail
-- User management
+BstocK is a comprehensive inventory management system designed for modern businesses. Built with cutting-edge technologies, it provides real-time inventory tracking, user management, and seamless mobile/web access for efficient stock operations.
 
-## Setup
+## 🚀 Live Demo
 
-### Prerequisites
+- **Frontend (Web App):** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
+- **Backend API:** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
+- **API Documentation:** [https://bstock-bv2k.onrender.com/docs](https://bstock-bv2k.onrender.com/docs)
 
-- Docker
-- Docker Compose
-- Flutter SDK
+## ✨ Features
 
-### Backend
+### 🔐 Authentication & Authorization
+- Secure user authentication with JWT tokens
+- Role-based access control (Admin/User roles)
+- User management and permissions
 
-1.  Navigate to the `backend` directory.
-2.  Create a `.env` file and add the following:
+### 📦 Inventory Management
+- Add, edit, and remove products
+- Real-time stock level tracking
+- Barcode scanning for quick product lookup
+- Product categorization and search
 
-    ```
-    DATABASE_URL=postgresql://user:password@db/bstock_db
-    SECRET_KEY=your_secret_key
-    ALGORITHM=HS256
-    ACCESS_TOKEN_EXPIRE_MINUTES=30
-    ```
+### 📊 Transaction Management
+- Stock addition and sale requests
+- Transaction history and audit trails
+- Payment status tracking
+- Approval workflows for stock changes
 
-3.  Run the following command to start the backend service:
+### 📱 Multi-Platform Support
+- Flutter mobile application (Android/iOS)
+- Responsive web interface
+- Cross-platform synchronization
 
-    ```
-    docker-compose up --build
-    ```
+### 🔄 Real-time Features
+- WebSocket connections for live updates
+- Real-time notifications
+- Instant inventory synchronization
 
-## Database Migrations
-
-If you are updating an existing database, you will need to apply the following migrations:
-
-```sql
-ALTER TABLE change_requests ADD COLUMN new_product_name VARCHAR;
-ALTER TABLE change_requests ADD COLUMN new_product_barcode VARCHAR;
-ALTER TABLE change_requests ADD COLUMN new_product_price FLOAT;
-ALTER TABLE change_requests ADD COLUMN new_product_quantity INTEGER;
-ALTER TABLE change_requests ADD COLUMN new_product_category VARCHAR;
-ALTER TABLE change_requests ALTER COLUMN product_id DROP NOT NULL;
-
-ALTER TABLE change_history ADD COLUMN buyer_name VARCHAR;
-ALTER TABLE change_history ADD COLUMN payment_status VARCHAR;
-```
+## 🛠️ Technology Stack
 
 ### Frontend
+- **Flutter** - Cross-platform mobile and web framework
+- **Dart** - Programming language
+- **Provider** - State management
+- **Go Router** - Navigation and routing
+- **Material Design 3** - UI/UX framework
 
-1.  Navigate to the `frontend` directory.
-2.  Run the following command to start the frontend application:
+### Backend
+- **FastAPI** - Modern Python web framework
+- **SQLAlchemy** - Database ORM
+- **Pydantic** - Data validation
+- **JWT** - Authentication tokens
+- **WebSockets** - Real-time communication
 
-    ```
-    flutter run -d chrome
-    ```
+### Database
+- **PostgreSQL** - Primary database (Production)
+- **SQLite** - Development database
+- **Neon** - Managed PostgreSQL hosting
 
-## Contributing
+### Deployment & Infrastructure
+- **Render** - Backend hosting and deployment
+- **Vercel** - Frontend web deployment (alternative)
+- **Docker** - Containerization
+- **GitHub Actions** - CI/CD pipeline
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. 
+## 🏗️ Project Structure
+
+```
+BstocK/
+├── frontend/                 # Flutter application
+│   ├── lib/
+│   │   ├── api/             # API service layer
+│   │   ├── models/          # Data models
+│   │   ├── providers/       # State management
+│   │   ├── screens/         # UI screens
+│   │   ├── widgets/         # Reusable components
+│   │   └── router/          # Navigation configuration
+│   ├── android/             # Android-specific files
+│   ├── ios/                 # iOS-specific files
+│   └── web/                 # Web-specific files
+│
+├── backend/                 # FastAPI application
+│   ├── app/
+│   │   ├── routers/         # API endpoints
+│   │   ├── models.py        # Database models
+│   │   ├── schemas.py       # Pydantic schemas
+│   │   ├── database.py      # Database configuration
+│   │   ├── auth.py          # Authentication logic
+│   │   └── main.py          # Application entry point
+│   ├── requirements.txt     # Python dependencies
+│   └── Dockerfile           # Container configuration
+│
+└── docker-compose.yml       # Multi-service orchestration
+```
+
+## 🚦 Getting Started
+
+### Prerequisites
+- **Flutter SDK** (>= 3.4.3)
+- **Python** (>= 3.8)
+- **PostgreSQL** (for production)
+- **Docker** (optional, for containerized development)
+
+### Local Development Setup
+
+#### Backend Setup
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/bstock.git
+   cd BstocK/backend
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up environment variables:
+   ```bash
+   cp env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. Initialize the database:
+   ```bash
+   # Set environment variables for admin user
+   export ADMIN_USERNAME="admin"
+   export ADMIN_PASSWORD="your-secure-password"
+   
+   # Run the seeding script
+   python -m app.seed
+   ```
+
+6. Start the development server:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+#### Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd ../frontend
+   ```
+
+2. Install Flutter dependencies:
+   ```bash
+   flutter pub get
+   ```
+
+3. Update API configuration:
+   - For Android: Update `android/app/src/main/AndroidManifest.xml`
+   - Set the backend URL to: `https://bstock-bv2k.onrender.com`
+
+4. Run the Flutter application:
+   ```bash
+   flutter run
+   ```
+
+### Docker Setup (Alternative)
+```bash
+# Build and run with Docker Compose
+docker-compose up --build
+
+# Access the application:
+# Frontend: http://localhost:3000
+# Backend: http://localhost:8000
+```
+
+## 📱 Mobile App Features
+
+### For Users
+- **Product Lookup**: Barcode scanning and search functionality
+- **Stock Requests**: Submit requests for stock additions or sales
+- **Transaction History**: View personal transaction records
+- **Profile Management**: Update personal information
+
+### For Administrators
+- **User Management**: Create and manage user accounts
+- **Product Management**: Add, edit, and archive products
+- **Request Approval**: Review and approve stock change requests
+- **Analytics Dashboard**: View comprehensive business insights
+- **System Settings**: Configure application preferences
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Backend (.env)
+```bash
+# Database
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# Security
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS
+CORS_ALLOW_ORIGINS=["https://your-frontend-domain.com"]
+
+# Admin Seeding
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-password
+
+# Environment
+ENVIRONMENT=production
+```
+
+#### Frontend (API Configuration)
+Update the API base URL in your Flutter app to point to the production backend:
+```dart
+// In your API service file
+static const String baseUrl = 'https://bstock-bv2k.onrender.com';
+```
+
+## 🚀 Deployment
+
+### Backend Deployment (Render)
+1. Connect your GitHub repository to Render
+2. Configure environment variables in Render dashboard
+3. Set the build command: `pip install -r requirements.txt`
+4. Set the start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+### Frontend Deployment
+The Flutter app can be deployed as:
+- **Web App**: Using Vercel or Netlify
+- **Mobile App**: Build APK/IPA and distribute via app stores
+- **Progressive Web App**: With service workers for offline functionality
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+cd backend
+python -m pytest
+```
+
+### Frontend Tests
+```bash
+cd frontend
+flutter test
+```
+
+## 📈 Performance & Security
+
+### Security Features
+- JWT-based authentication
+- Password hashing with bcrypt
+- CORS protection
+- SQL injection prevention
+- Input validation and sanitization
+
+### Performance Optimizations
+- Database query optimization
+- Efficient state management
+- Image compression and caching
+- Lazy loading of data
+- WebSocket connection pooling
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Create an issue on GitHub
+- Contact the development team
+- Check the [API documentation](https://bstock-bv2k.onrender.com/docs)
+
+## 🎯 Roadmap
+
+- [ ] Advanced analytics and reporting
+- [ ] Multi-warehouse support
+- [ ] Integration with external accounting systems
+- [ ] Mobile push notifications
+- [ ] Offline functionality
+- [ ] API rate limiting
+- [ ] Advanced search and filtering
+- [ ] Export/import functionality
+
+---
+
+<div align="center">
+  <p>Built with ❤️ using Flutter and FastAPI</p>
+  <p>© 2024 BstocK. All rights reserved.</p>
+</div>

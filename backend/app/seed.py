@@ -1,6 +1,5 @@
-import getpass
-import sys
 import os
+import sys
 from sqlalchemy.orm import Session
 
 # Add the project root to the Python path
@@ -14,36 +13,38 @@ from app.auth import get_password_hash
 Base.metadata.create_all(bind=engine)
 
 def seed_admin_user():
+    print("--- Seeding Admin User ---")
+    
+    # Get credentials from environment variables
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+
+    # Check if the variables are set
+    if not admin_username or not admin_password:
+        print("Error: ADMIN_USERNAME and ADMIN_PASSWORD environment variables must be set.")
+        return
+
     db: Session = SessionLocal()
     try:
-        print("--- Seeding Admin User ---")
-
-        # Check if an admin user already exists
-        admin_exists = db.query(User).filter(User.role == UserRole.admin).first()
-        if admin_exists:
-            print("Admin user already exists. Skipping.")
-            return
-
-        print("Creating a new admin user.")
-        username = input("Enter admin username: ")
-        password = getpass.getpass("Enter admin password: ")
-        
-        hashed_password = get_password_hash(password)
-        
-        admin_user = User(
-            username=username,
-            hashed_password=hashed_password,
-            role=UserRole.admin,
-            is_active=True
-        )
-        
-        db.add(admin_user)
-        db.commit()
-        
-        print(f"Admin user '{username}' created successfully!")
-
+        # Check if user already exists
+        db_user = db.query(User).filter(User.username == admin_username).first()
+        if db_user:
+            print(f"Admin user '{admin_username}' already exists.")
+        else:
+            hashed_password = get_password_hash(admin_password)
+            new_admin = User(
+                username=admin_username, 
+                hashed_password=hashed_password,
+                role=UserRole.admin,
+                is_active=True
+            )
+            db.add(new_admin)
+            db.commit()
+            print(f"Admin user '{admin_username}' created successfully!")
+    
     finally:
         db.close()
 
+# This allows you to run the file directly
 if __name__ == "__main__":
     seed_admin_user() 

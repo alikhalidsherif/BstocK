@@ -35,6 +35,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp.router(
       title: 'BstocK',
+      debugShowCheckedModeBanner: false,
       theme: AppThemes.lightTheme,
       darkTheme: AppThemes.darkTheme,
       themeMode: themeProvider.themeMode,
