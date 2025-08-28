@@ -27,8 +27,8 @@ app = FastAPI(
 # CORS Middleware Configuration
 cors_kwargs = {
     "allow_credentials": settings.CORS_ALLOW_CREDENTIALS,
-    "allow_methods": settings.CORS_ALLOW_METHODS,
-    "allow_headers": settings.CORS_ALLOW_HEADERS,
+    "allow_methods": ["*"],  # Allow all HTTP methods to prevent CORS errors
+    "allow_headers": ["*"],  # Allow all headers to prevent CORS errors
 }
 
 # Priority: Use explicit allowed origins if set, otherwise fall back to regex for development
@@ -55,7 +55,7 @@ app.include_router(realtime.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the BstocK API"}
+    return {"status": "ok"}
 
 @app.get("/healthz")
 def health_check():
