@@ -1,22 +1,44 @@
 from sqlalchemy.orm import Session, joinedload
-from . import models, schemas, auth
-from datetime import datetime, timezone
-from .events import hub
+from sqlalchemy import func, desc
+from . import models, schemas
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
 
-# User CRUD
-def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
+# ============================================================================
+# USER CRUD
+# ============================================================================
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
+def get_user_by_username(db: Session, username: str, organization_id: Optional[int] = None):
+    query = db.query(models.User).filter(models.User.username == username)
+    if organization_id is not None:
+        query = query.filter(models.User.organization_id == organization_id)
+    return query.first()
 
-def create_user(db: Session, user: schemas.UserCreate):
-    hashed_password = auth.get_password_hash(user.password)
-    db_user = models.User(username=user.username, hashed_password=hashed_password, role=user.role)
+
+def get_user_by_id(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def get_users(db: Session, organization_id: int, skip: int = 0, limit: int = 100):
+    """Get all users for a specific organization"""
+    return db.query(models.User).filter(
+        models.User.organization_id == organization_id
+    ).offset(skip).limit(limit).all()
+
+
+def create_user(db: Session, user: schemas.UserCreate, hashed_password: str):
+    db_user = models.User(
+        username=user.username,
+        hashed_password=hashed_password,
+        role=user.role,
+        organization_id=user.organization_id
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 def update_user(db: Session, user: models.User, user_in: schemas.UserUpdate):
     update_data = user_in.model_dump(exclude_unset=True)
@@ -27,34 +49,96 @@ def update_user(db: Session, user: models.User, user_in: schemas.UserUpdate):
     db.refresh(user)
     return user
 
+
 def delete_user(db: Session, user: models.User):
     db.delete(user)
     db.commit()
     return user
 
-# Product CRUD
-def get_product_by_barcode(db: Session, barcode: str):
-    return db.query(models.Product).filter(models.Product.barcode == barcode).first()
 
-def get_product_by_id(db: Session, product_id: int):
-    return db.query(models.Product).filter(models.Product.id == product_id).first()
+# ============================================================================
+# ORGANIZATION CRUD
+# ============================================================================
 
-def get_products(db: Session, skip: int = 0, limit: int = 100, include_archived: bool = False):
-    query = db.query(models.Product)
+def create_organization(db: Session, org: schemas.OrganizationCreate, owner_id: Optional[int] = None):
+    """Create a new organization"""
+    db_org = models.Organization(
+        name=org.name,
+        owner_id=owner_id
+    )
+    db.add(db_org)
+    db.commit()
+    db.refresh(db_org)
+    return db_org
+
+
+def get_organization_by_id(db: Session, org_id: int):
+    return db.query(models.Organization).filter(models.Organization.id == org_id).first()
+
+
+# ============================================================================
+# PRODUCT & VARIANT CRUD
+# ============================================================================
+
+def get_products(db: Session, organization_id: int, skip: int = 0, limit: int = 100, include_archived: bool = False):
+    """Get all products for an organization with their variants"""
+    query = db.query(models.Product).options(
+        joinedload(models.Product.variants)
+    ).filter(models.Product.organization_id == organization_id)
+    
     if not include_archived:
         query = query.filter(models.Product.is_archived == False)
+    
     return query.offset(skip).limit(limit).all()
 
-def get_product_categories(db: Session):
-    return db.query(models.Product.category).distinct().all()
 
-def create_product(db: Session, product: schemas.ProductCreate) -> models.Product:
-    db_product = models.Product(**product.model_dump())
+def get_product_by_id(db: Session, product_id: int, organization_id: int):
+    """Get a product by ID, ensuring it belongs to the organization"""
+    return db.query(models.Product).options(
+        joinedload(models.Product.variants)
+    ).filter(
+        models.Product.id == product_id,
+        models.Product.organization_id == organization_id
+    ).first()
+
+
+def create_product_with_variants(
+    db: Session,
+    product: schemas.ProductCreate,
+    organization_id: int
+) -> models.Product:
+    """Create a product with its variants"""
+    db_product = models.Product(
+        name=product.name,
+        description=product.description,
+        category=product.category,
+        organization_id=organization_id
+    )
     db.add(db_product)
-    # The commit is now handled by the endpoint after the loop.
+    db.flush()
+    
+    for variant_data in product.variants:
+        db_variant = models.Variant(
+            product_id=db_product.id,
+            sku=variant_data.sku,
+            barcode=variant_data.barcode,
+            attributes=variant_data.attributes,
+            purchase_price=variant_data.purchase_price,
+            sale_price=variant_data.sale_price,
+            quantity=variant_data.quantity,
+            min_stock_level=variant_data.min_stock_level,
+            unit_type=variant_data.unit_type,
+            is_active=variant_data.is_active
+        )
+        db.add(db_variant)
+    
+    db.commit()
+    db.refresh(db_product)
     return db_product
 
-def update_product(db: Session, product: models.Product, product_in: schemas.ProductCreate) -> models.Product:
+
+def update_product(db: Session, product: models.Product, product_in: schemas.ProductUpdate):
+    """Update product details"""
     update_data = product_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(product, field, value)
@@ -63,225 +147,315 @@ def update_product(db: Session, product: models.Product, product_in: schemas.Pro
     db.refresh(product)
     return product
 
-def archive_product(db: Session, product: models.Product):
-    product.is_archived = True
-    db.add(product)
-    db.commit()
-    db.refresh(product)
-    return product
 
-def unarchive_product(db: Session, product: models.Product):
-    product.is_archived = False
-    db.add(product)
-    db.commit()
-    db.refresh(product)
-    return product
+def get_product_categories(db: Session, organization_id: int):
+    """Get distinct categories for an organization"""
+    return db.query(models.Product.category).filter(
+        models.Product.organization_id == organization_id,
+        models.Product.category.isnot(None)
+    ).distinct().all()
 
-def delete_product(db: Session, product: models.Product):
-    # Nullify product_id in history to avoid FK issues, keep the history row
-    db.query(models.ChangeHistory).filter(models.ChangeHistory.product_id == product.id).update(
-        {models.ChangeHistory.product_id: None}, synchronize_session=False
+
+# ============================================================================
+# VARIANT CRUD
+# ============================================================================
+
+def get_variant_by_id(db: Session, variant_id: int, organization_id: int):
+    """Get a variant by ID, ensuring it belongs to the organization"""
+    return db.query(models.Variant).join(models.Product).filter(
+        models.Variant.id == variant_id,
+        models.Product.organization_id == organization_id
+    ).first()
+
+
+def get_variant_by_barcode(db: Session, barcode: str, organization_id: int):
+    """Get a variant by barcode, ensuring it belongs to the organization"""
+    return db.query(models.Variant).join(models.Product).filter(
+        models.Variant.barcode == barcode,
+        models.Product.organization_id == organization_id
+    ).first()
+
+
+def get_variant_by_sku(db: Session, sku: str, organization_id: int):
+    """Get a variant by SKU, ensuring it belongs to the organization"""
+    return db.query(models.Variant).join(models.Product).filter(
+        models.Variant.sku == sku,
+        models.Product.organization_id == organization_id
+    ).first()
+
+
+def update_variant(db: Session, variant: models.Variant, variant_in: schemas.VariantUpdate):
+    """Update variant details"""
+    update_data = variant_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(variant, field, value)
+    db.add(variant)
+    db.commit()
+    db.refresh(variant)
+    return variant
+
+
+def create_variant(db: Session, variant: schemas.VariantCreate, product_id: int):
+    """Create a new variant for an existing product"""
+    db_variant = models.Variant(
+        product_id=product_id,
+        sku=variant.sku,
+        barcode=variant.barcode,
+        attributes=variant.attributes,
+        purchase_price=variant.purchase_price,
+        sale_price=variant.sale_price,
+        quantity=variant.quantity,
+        min_stock_level=variant.min_stock_level,
+        unit_type=variant.unit_type,
+        is_active=variant.is_active
     )
-    db.delete(product)
+    db.add(db_variant)
     db.commit()
-    return product
+    db.refresh(db_variant)
+    return db_variant
 
-# Change Request CRUD
-def create_change_request(db: Session, request: schemas.ChangeRequestCreate, user_id: int):
-    db_request = models.ChangeRequest(
-        product_id=request.product_id,
-        action=request.action,
-        quantity_change=request.quantity_change,
-        buyer_name=request.buyer_name,
-        payment_status=request.payment_status,
-        history_id=request.history_id,
-        requester_id=user_id,
-        new_product_name=request.new_product_name,
-        new_product_barcode=request.new_product_barcode,
-        new_product_price=request.new_product_price,
-        new_product_quantity=request.new_product_quantity,
-        new_product_category=request.new_product_category,
+
+def get_low_stock_variants(db: Session, organization_id: int):
+    """Get variants that are below their minimum stock level"""
+    return db.query(models.Variant).join(models.Product).filter(
+        models.Product.organization_id == organization_id,
+        models.Variant.quantity <= models.Variant.min_stock_level,
+        models.Variant.is_active == True
+    ).all()
+
+
+# ============================================================================
+# CUSTOMER CRUD
+# ============================================================================
+
+def get_customers(db: Session, organization_id: int, skip: int = 0, limit: int = 100):
+    """Get all customers for an organization"""
+    return db.query(models.Customer).filter(
+        models.Customer.organization_id == organization_id
+    ).offset(skip).limit(limit).all()
+
+
+def get_customer_by_id(db: Session, customer_id: int, organization_id: int):
+    """Get a customer by ID, ensuring it belongs to the organization"""
+    return db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.organization_id == organization_id
+    ).first()
+
+
+def create_customer(db: Session, customer: schemas.CustomerCreate, organization_id: int):
+    """Create a new customer"""
+    db_customer = models.Customer(
+        name=customer.name,
+        phone=customer.phone,
+        email=customer.email,
+        address=customer.address,
+        organization_id=organization_id
     )
-    db.add(db_request)
+    db.add(db_customer)
     db.commit()
-    db.refresh(db_request)
-    return db_request
+    db.refresh(db_customer)
+    return db_customer
 
-def get_pending_change_requests(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.ChangeRequest).options(
-        joinedload(models.ChangeRequest.product),
-        joinedload(models.ChangeRequest.requester)
-    ).filter(models.ChangeRequest.status == models.ChangeRequestStatus.pending).offset(skip).limit(limit).all()
 
-def has_pending_product_creation_request(db: Session, barcode: str):
-    """Check if there's already a pending request to create a product with the given barcode"""
-    return db.query(models.ChangeRequest).filter(
-        models.ChangeRequest.action == models.ChangeRequestAction.create,
-        models.ChangeRequest.new_product_barcode == barcode,
-        models.ChangeRequest.status == models.ChangeRequestStatus.pending
-    ).first() is not None
+# ============================================================================
+# VENDOR CRUD
+# ============================================================================
 
-def get_change_history(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.ChangeHistory).options(
-        joinedload(models.ChangeHistory.product),
-        joinedload(models.ChangeHistory.requester),
-        joinedload(models.ChangeHistory.reviewer)
-    ).order_by(models.ChangeHistory.timestamp.desc()).offset(skip).limit(limit).all()
+def get_vendors(db: Session, organization_id: int, skip: int = 0, limit: int = 100):
+    """Get all vendors for an organization"""
+    return db.query(models.Vendor).filter(
+        models.Vendor.organization_id == organization_id
+    ).offset(skip).limit(limit).all()
 
-def get_sales_history(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.ChangeHistory).options(
-        joinedload(models.ChangeHistory.product),
-        joinedload(models.ChangeHistory.requester),
-        joinedload(models.ChangeHistory.reviewer)
-    ).filter(
-        models.ChangeHistory.action == models.ChangeRequestAction.sell,
-        models.ChangeHistory.product_id.isnot(None) # Ensure product exists
-    ).order_by(models.ChangeHistory.timestamp.desc()).offset(skip).limit(limit).all()
 
-def approve_change_request(db: Session, request_id: int, reviewer_id: int):
-    db_request = db.query(models.ChangeRequest).filter(models.ChangeRequest.id == request_id).first()
-    if not db_request or db_request.status != models.ChangeRequestStatus.pending:
-        return None
+def create_vendor(db: Session, vendor: schemas.VendorCreate, organization_id: int):
+    """Create a new vendor"""
+    db_vendor = models.Vendor(
+        name=vendor.name,
+        contact_person=vendor.contact_person,
+        phone=vendor.phone,
+        email=vendor.email,
+        address=vendor.address,
+        organization_id=organization_id
+    )
+    db.add(db_vendor)
+    db.commit()
+    db.refresh(db_vendor)
+    return db_vendor
 
-    db_product = None
-    if db_request.product_id:
-        db_product = db.query(models.Product).filter(models.Product.id == db_request.product_id).first()
 
-    if db_request.action == models.ChangeRequestAction.add:
-        if db_product:
-            db_product.quantity += db_request.quantity_change
-    elif db_request.action == models.ChangeRequestAction.sell:
-        if db_product:
-            if db_product.quantity < db_request.quantity_change:
-                raise ValueError("Not enough stock to sell.")
-            db_product.quantity -= db_request.quantity_change
-    elif db_request.action == models.ChangeRequestAction.update:
-        # Apply field updates to the existing product
-        if not db_product:
-            raise ValueError("Product not found for update")
-        update_fields = {}
-        if db_request.new_product_name is not None:
-            update_fields['name'] = db_request.new_product_name
-        if db_request.new_product_barcode is not None:
-            # Ensure uniqueness
-            existing = db.query(models.Product).filter(models.Product.barcode == db_request.new_product_barcode).first()
-            if existing and existing.id != db_product.id:
-                raise ValueError(f"Another product with barcode {db_request.new_product_barcode} already exists.")
-            update_fields['barcode'] = db_request.new_product_barcode
-        if db_request.new_product_price is not None:
-            update_fields['price'] = db_request.new_product_price
-        if db_request.new_product_quantity is not None:
-            update_fields['quantity'] = db_request.new_product_quantity
-        if db_request.new_product_category is not None:
-            update_fields['category'] = db_request.new_product_category
-        for k, v in update_fields.items():
-            setattr(db_product, k, v)
-    elif db_request.action == models.ChangeRequestAction.create:
-        # Check if a product with this barcode already exists
-        existing_product = db.query(models.Product).filter(models.Product.barcode == db_request.new_product_barcode).first()
-        if existing_product:
-            raise ValueError(f"A product with barcode '{db_request.new_product_barcode}' already exists.")
-        
-        new_product_schema = schemas.ProductCreate(
-            name=db_request.new_product_name,
-            barcode=db_request.new_product_barcode,
-            price=db_request.new_product_price,
-            quantity=db_request.new_product_quantity,
-            category=db_request.new_product_category,
-        )
-        db_product = create_product(db, new_product_schema)
-        db.commit() # Commit the new product to get an ID
-        db.refresh(db_product)
-    elif db_request.action == models.ChangeRequestAction.archive:
-        # Will archive after logging to history
-        pass
-    elif db_request.action == models.ChangeRequestAction.restore:
-        # Will unarchive after logging to history
-        pass
-    elif db_request.action == models.ChangeRequestAction.delete:
-        # Will delete after logging to history
-        pass
-    elif db_request.action == models.ChangeRequestAction.mark_paid:
-        # For mark_paid, update the specific history entry if provided
-        updated_history = None
-        if db_request.history_id is not None:
-            updated_history = db.query(models.ChangeHistory).filter(
-                models.ChangeHistory.id == db_request.history_id
-            ).first()
-            if updated_history:
-                updated_history.payment_status = models.PaymentStatus.paid
-                db.add(updated_history)
-                db.commit()
-                db.refresh(updated_history)
+# ============================================================================
+# SALES CRUD
+# ============================================================================
 
-    # For mark_paid, we return the updated history entry and skip creating a new log
-    if db_request.action == models.ChangeRequestAction.mark_paid:
-        db.delete(db_request)
-        db.commit()
-        # Notify clients
-        if db_product:
-            hub.publish_from_thread({"type": "product.updated", "product_id": db_product.id})
-        hub.publish_from_thread({"type": "history.updated"})
-        return updated_history
-
-    # Log to history before deleting the product
-    # For create actions, use the new_product_quantity instead of quantity_change
-    quantity_for_history = db_request.quantity_change
-    if db_request.action == models.ChangeRequestAction.create:
-        quantity_for_history = db_request.new_product_quantity
+def create_sale(
+    db: Session,
+    sale_data: schemas.SaleCreate,
+    organization_id: int,
+    cashier_id: int
+) -> models.Sale:
+    """
+    Create a new sale transaction atomically.
+    Verifies stock, calculates totals, creates sale and items, and updates inventory.
+    """
+    items_data = []
+    subtotal = Decimal('0')
+    total_profit = Decimal('0')
     
-    # Keep history linked to the product for archive/delete actions so history remains meaningful
-    history_product_id = (db_product.id if db_product else None)
-    history_entry = models.ChangeHistory(
-        product_id=history_product_id,
-        quantity_change=quantity_for_history,
-        action=db_request.action,
-        status=models.ChangeRequestStatus.approved,
-        requester_id=db_request.requester_id,
-        reviewer_id=reviewer_id,
-        buyer_name=db_request.buyer_name,
-        payment_status=db_request.payment_status
+    for item_input in sale_data.items:
+        variant = db.query(models.Variant).join(models.Product).filter(
+            models.Variant.id == item_input.variant_id,
+            models.Product.organization_id == organization_id
+        ).first()
+        
+        if not variant:
+            raise ValueError(f"Variant {item_input.variant_id} not found")
+        
+        if variant.quantity < item_input.quantity:
+            raise ValueError(
+                f"Insufficient stock for {variant.sku}. "
+                f"Available: {variant.quantity}, Requested: {item_input.quantity}"
+            )
+        
+        item_total = variant.sale_price * item_input.quantity
+        item_profit = (variant.sale_price - variant.purchase_price) * item_input.quantity
+        
+        items_data.append({
+            'variant': variant,
+            'quantity': item_input.quantity,
+            'price_at_sale': variant.sale_price,
+            'purchase_price_at_sale': variant.purchase_price,
+            'item_total': item_total,
+            'item_profit': item_profit
+        })
+        
+        subtotal += item_total
+        total_profit += item_profit
+    
+    total_amount = subtotal + sale_data.tax - sale_data.discount
+    
+    db_sale = models.Sale(
+        organization_id=organization_id,
+        cashier_id=cashier_id,
+        customer_id=sale_data.customer_id,
+        subtotal=subtotal,
+        tax=sale_data.tax,
+        discount=sale_data.discount,
+        total_amount=total_amount,
+        profit=total_profit,
+        payment_method=sale_data.payment_method,
+        notes=sale_data.notes,
+        synced=True
     )
-    db.add(history_entry)
-
-    # Apply post-history action
-    if db_product:
-        if db_request.action == models.ChangeRequestAction.archive:
-            archive_product(db, db_product)
-        elif db_request.action == models.ChangeRequestAction.restore:
-            unarchive_product(db, db_product)
-        elif db_request.action == models.ChangeRequestAction.delete:
-            delete_product(db, db_product)
-
-    # Delete the original request
-    db.delete(db_request)
+    db.add(db_sale)
+    db.flush()
+    
+    for item_data in items_data:
+        db_sale_item = models.SaleItem(
+            sale_id=db_sale.id,
+            variant_id=item_data['variant'].id,
+            quantity=item_data['quantity'],
+            price_at_sale=item_data['price_at_sale'],
+            purchase_price_at_sale=item_data['purchase_price_at_sale']
+        )
+        db.add(db_sale_item)
+        
+        item_data['variant'].quantity -= item_data['quantity']
+        db.add(item_data['variant'])
+    
     db.commit()
-    # Broadcast changes
-    if db_product:
-        hub.publish_from_thread({"type": "product.updated", "product_id": db_product.id})
-    hub.publish_from_thread({"type": "history.updated"})
-    return history_entry
+    db.refresh(db_sale)
+    return db_sale
 
 
-def reject_change_request(db: Session, request_id: int, reviewer_id: int):
-    db_request = db.query(models.ChangeRequest).filter(models.ChangeRequest.id == request_id).first()
-    if not db_request or db_request.status != models.ChangeRequestStatus.pending:
-        return None
+def get_sales(
+    db: Session,
+    organization_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+):
+    """Get sales for an organization with optional date filtering"""
+    query = db.query(models.Sale).options(
+        joinedload(models.Sale.items).joinedload(models.SaleItem.variant),
+        joinedload(models.Sale.cashier),
+        joinedload(models.Sale.customer)
+    ).filter(models.Sale.organization_id == organization_id)
+    
+    if start_date:
+        query = query.filter(models.Sale.created_at >= start_date)
+    if end_date:
+        query = query.filter(models.Sale.created_at <= end_date)
+    
+    return query.order_by(desc(models.Sale.created_at)).offset(skip).limit(limit).all()
 
-    # Log to history
-    history_entry = models.ChangeHistory(
-        product_id=db_request.product_id,
-        quantity_change=db_request.quantity_change,
-        action=db_request.action,
-        status=models.ChangeRequestStatus.rejected,
-        requester_id=db_request.requester_id,
-        reviewer_id=reviewer_id,
-        buyer_name=db_request.buyer_name,
-        payment_status=db_request.payment_status
+
+def get_sale_by_id(db: Session, sale_id: int, organization_id: int):
+    """Get a sale by ID with all details"""
+    return db.query(models.Sale).options(
+        joinedload(models.Sale.items).joinedload(models.SaleItem.variant).joinedload(models.Variant.product),
+        joinedload(models.Sale.cashier),
+        joinedload(models.Sale.customer)
+    ).filter(
+        models.Sale.id == sale_id,
+        models.Sale.organization_id == organization_id
+    ).first()
+
+
+def get_sales_analytics(
+    db: Session,
+    organization_id: int,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+):
+    """Get sales analytics for an organization"""
+    query = db.query(
+        func.sum(models.Sale.total_amount).label('total_revenue'),
+        func.sum(models.Sale.profit).label('total_profit'),
+        func.count(models.Sale.id).label('total_sales')
+    ).filter(models.Sale.organization_id == organization_id)
+    
+    if start_date:
+        query = query.filter(models.Sale.created_at >= start_date)
+    if end_date:
+        query = query.filter(models.Sale.created_at <= end_date)
+    
+    result = query.first()
+    
+    best_sellers = db.query(
+        models.Variant.id,
+        models.Variant.sku,
+        models.Product.name,
+        func.sum(models.SaleItem.quantity).label('total_quantity'),
+        func.sum(models.SaleItem.price_at_sale * models.SaleItem.quantity).label('total_revenue')
+    ).join(
+        models.SaleItem, models.SaleItem.variant_id == models.Variant.id
+    ).join(
+        models.Sale, models.Sale.id == models.SaleItem.sale_id
+    ).join(
+        models.Product, models.Product.id == models.Variant.product_id
+    ).filter(
+        models.Sale.organization_id == organization_id
     )
-    db.add(history_entry)
-
-    # Delete the original request
-    db.delete(db_request)
-    db.commit()
-    return history_entry
+    
+    if start_date:
+        best_sellers = best_sellers.filter(models.Sale.created_at >= start_date)
+    if end_date:
+        best_sellers = best_sellers.filter(models.Sale.created_at <= end_date)
+    
+    best_sellers = best_sellers.group_by(
+        models.Variant.id,
+        models.Variant.sku,
+        models.Product.name
+    ).order_by(
+        desc('total_quantity')
+    ).limit(10).all()
+    
+    return {
+        'total_revenue': result.total_revenue or Decimal('0'),
+        'total_profit': result.total_profit or Decimal('0'),
+        'total_sales_count': result.total_sales or 0,
+        'best_sellers': best_sellers
+    }

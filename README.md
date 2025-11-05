@@ -1,51 +1,60 @@
-# BstocK - Inventory Management System
+# BstocK - Multi-Tenant POS & Business Management System
 
 <div align="center">
   <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/PostgreSQL-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Render" />
-  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
 </div>
 
 ## 📋 Overview
 
-BstocK is a comprehensive inventory management system designed for modern businesses. Built with cutting-edge technologies, it provides real-time inventory tracking, user management, and seamless mobile/web access for efficient stock operations.
+BstocK is a comprehensive multi-tenant Point of Sale (POS) and business management platform designed for small to medium-sized businesses with minimal digital literacy. Built with a focus on simplicity and usability, it provides inventory management, sales tracking, analytics, and offline functionality - all wrapped in an intuitive interface that anyone can use.
 
-## 🚀 Live Demo
+## ✨ Core Philosophy: The Simplicity Manifesto
 
-- **Frontend (Web App):** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
-- **Backend API:** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
-- **API Documentation:** [https://bstock-bv2k.onrender.com/docs](https://bstock-bv2k.onrender.com/docs)
+- **Simple by Default, Powerful on Demand**: Complex features are hidden behind optional menus using progressive disclosure
+- **The One-Thumb Checkout**: POS interface designed for speed and efficiency
+- **Clarity and Forgiveness**: Clear language, predictable UI, and confirmations for destructive actions
+- **Offline First**: Sales transactions work without an internet connection
 
-## ✨ Features
+## 🚀 Key Features
 
-### 🔐 Authentication & Authorization
-- Secure user authentication with JWT tokens
-- Role-based access control (Admin/User roles)
-- User management and permissions
+### 🏪 Multi-Tenant Architecture
+- Complete data isolation between businesses
+- Each organization has its own products, customers, sales, and users
+- Secure role-based access control (Owner/Cashier)
+
+### 💰 Point of Sale (POS)
+- Fast, touch-optimized checkout interface
+- Barcode scanning for quick product lookup
+- Multiple payment methods (cash, card, mobile, bank transfer)
+- Real-time inventory updates
+- Digital receipt generation and sharing via PDF
 
 ### 📦 Inventory Management
-- Add, edit, and remove products
-- Real-time stock level tracking
-- Barcode scanning for quick product lookup
-- Product categorization and search
+- Product variants (e.g., T-Shirt in different sizes and colors)
+- SKU and barcode support
+- Purchase and sale price tracking
+- Low stock alerts
+- Category management
 
-### 📊 Transaction Management
-- Stock addition and sale requests
-- Transaction history and audit trails
-- Payment status tracking
-- Approval workflows for stock changes
+### 📊 Analytics & Reporting
+- Sales revenue and profit tracking
+- Best-selling products analysis
+- Date-range filtering
+- Customer purchase history
 
-### 📱 Multi-Platform Support
-- Flutter mobile application (Android/iOS)
+### 📱 Mobile-First Design
+- Flutter cross-platform application
 - Responsive web interface
-- Cross-platform synchronization
+- Offline sales with automatic sync
+- Native sharing for receipts
 
-### 🔄 Real-time Features
-- WebSocket connections for live updates
-- Real-time notifications
-- Instant inventory synchronization
+### 👥 User Management
+- Organization owners can create and manage cashier accounts
+- Role-based permissions
+- Activity tracking
 
 ## 🛠️ Technology Stack
 
@@ -53,55 +62,61 @@ BstocK is a comprehensive inventory management system designed for modern busine
 - **Flutter** - Cross-platform mobile and web framework
 - **Dart** - Programming language
 - **Provider** - State management
-- **Go Router** - Navigation and routing
-- **Material Design 3** - UI/UX framework
+- **Go Router** - Navigation
+- **sqflite/isar** - Local database for offline functionality
+- **share_plus** - Native sharing for receipts
 
 ### Backend
 - **FastAPI** - Modern Python web framework
-- **SQLAlchemy** - Database ORM
+- **SQLAlchemy** - Database ORM with multi-tenant support
 - **Pydantic** - Data validation
-- **JWT** - Authentication tokens
-- **WebSockets** - Real-time communication
+- **JWT** - Token-based authentication
+- **ReportLab** - PDF generation for receipts
+- **WebSockets** - Real-time notifications
 
 ### Database
-- **PostgreSQL** - Primary database (Production)
+- **PostgreSQL** - Production database
 - **SQLite** - Development database
-- **Neon** - Managed PostgreSQL hosting
-
-### Deployment & Infrastructure
-- **Render** - Backend hosting and deployment
-- **Vercel** - Frontend web deployment (alternative)
-- **Docker** - Containerization
-- **GitHub Actions** - CI/CD pipeline
+- Full support for JSON fields for flexible product attributes
 
 ## 🏗️ Project Structure
 
 ```
 BstocK/
-├── frontend/                 # Flutter application
+├── frontend/                  # Flutter application
 │   ├── lib/
-│   │   ├── api/             # API service layer
-│   │   ├── models/          # Data models
-│   │   ├── providers/       # State management
-│   │   ├── screens/         # UI screens
-│   │   ├── widgets/         # Reusable components
-│   │   └── router/          # Navigation configuration
-│   ├── android/             # Android-specific files
-│   ├── ios/                 # iOS-specific files
-│   └── web/                 # Web-specific files
+│   │   ├── api/              # API service layer
+│   │   ├── models/           # Data models
+│   │   ├── providers/        # State management
+│   │   ├── screens/
+│   │   │   ├── onboarding/   # New organization setup
+│   │   │   ├── pos/          # POS checkout interface
+│   │   │   ├── inventory/    # Product management
+│   │   │   ├── analytics/    # Sales reports
+│   │   │   └── settings/     # Configuration
+│   │   ├── widgets/          # Reusable components
+│   │   └── router/           # Navigation configuration
+│   └── pubspec.yaml          # Dependencies
 │
-├── backend/                 # FastAPI application
+├── backend/                   # FastAPI application
 │   ├── app/
-│   │   ├── routers/         # API endpoints
-│   │   ├── models.py        # Database models
-│   │   ├── schemas.py       # Pydantic schemas
-│   │   ├── database.py      # Database configuration
-│   │   ├── auth.py          # Authentication logic
-│   │   └── main.py          # Application entry point
-│   ├── requirements.txt     # Python dependencies
-│   └── Dockerfile           # Container configuration
+│   │   ├── routers/
+│   │   │   ├── auth.py       # Authentication & onboarding
+│   │   │   ├── products.py   # Product & variant management
+│   │   │   ├── pos.py        # POS sales transactions
+│   │   │   ├── receipts.py   # PDF receipt generation
+│   │   │   ├── analytics.py  # Business analytics
+│   │   │   └── users.py      # User management
+│   │   ├── models.py         # Database models
+│   │   ├── schemas.py        # Pydantic schemas
+│   │   ├── crud.py           # Database operations
+│   │   ├── auth.py           # Authentication logic
+│   │   ├── database.py       # Database configuration
+│   │   └── main.py           # Application entry point
+│   ├── requirements.txt      # Python dependencies
+│   └── Dockerfile            # Container configuration
 │
-└── docker-compose.yml       # Multi-service orchestration
+└── docker-compose.yml        # Multi-service orchestration
 ```
 
 ## 🚦 Getting Started
@@ -110,11 +125,10 @@ BstocK/
 - **Flutter SDK** (>= 3.4.3)
 - **Python** (>= 3.8)
 - **PostgreSQL** (for production)
-- **Docker** (optional, for containerized development)
+- **Docker** (optional)
 
-### Local Development Setup
+### Backend Setup
 
-#### Backend Setup
 1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/bstock.git
@@ -138,22 +152,16 @@ BstocK/
    # Edit .env with your configuration
    ```
 
-5. Initialize the database:
-   ```bash
-   # Set environment variables for admin user
-   export ADMIN_USERNAME="admin"
-   export ADMIN_PASSWORD="your-secure-password"
-   
-   # Run the seeding script
-   python -m app.seed
-   ```
-
-6. Start the development server:
+5. Start the development server:
    ```bash
    uvicorn app.main:app --reload
    ```
 
-#### Frontend Setup
+   The API will be available at `http://localhost:8000`
+   API documentation: `http://localhost:8000/docs`
+
+### Frontend Setup
+
 1. Navigate to the frontend directory:
    ```bash
    cd ../frontend
@@ -164,85 +172,121 @@ BstocK/
    flutter pub get
    ```
 
-3. Update API configuration:
-   - For Android: Update `android/app/src/main/AndroidManifest.xml`
-   - Set the backend URL to: `https://bstock-bv2k.onrender.com`
-
-4. Run the Flutter application:
+3. Run the Flutter application:
    ```bash
    flutter run
    ```
 
-### Docker Setup (Alternative)
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
+## 📱 User Workflows
 
-# Access the application:
-# Frontend: http://localhost:3000
-# Backend: http://localhost:8000
-```
+### First-Time Setup (Onboarding)
+1. User opens the app
+2. Guided wizard collects:
+   - Organization name
+   - Owner username and password
+3. Account is created automatically
+4. User is taken to a simple tutorial for adding first product
 
-## 📱 Mobile App Features
+### Owner Workflow
+- Full access to all features via bottom navigation:
+  - **POS**: Process sales
+  - **Inventory**: Manage products and variants
+  - **Analytics**: View sales reports
+  - **Settings**: Manage users and organization settings
 
-### For Users
-- **Product Lookup**: Barcode scanning and search functionality
-- **Stock Requests**: Submit requests for stock additions or sales
-- **Transaction History**: View personal transaction records
-- **Profile Management**: Update personal information
+### Cashier Workflow
+- Direct access to POS screen after login
+- Limited navigation (POS screen only)
+- Can process sales and view inventory
+- Cannot modify products or access analytics
 
-### For Administrators
-- **User Management**: Create and manage user accounts
-- **Product Management**: Add, edit, and archive products
-- **Request Approval**: Review and approve stock change requests
-- **Analytics Dashboard**: View comprehensive business insights
-- **System Settings**: Configure application preferences
+### POS Transaction Flow
+1. Cashier opens POS screen
+2. Scans barcode or selects product from grid
+3. Adjusts quantity if needed
+4. Taps "Charge" button
+5. Selects payment method
+6. Sale is completed
+7. Option to share receipt via any app (WhatsApp, email, etc.)
 
-## 🔧 Configuration
+## 🔧 API Endpoints
 
-### Environment Variables
+### Authentication
+- `POST /api/auth/onboarding` - Create new organization
+- `POST /api/auth/token` - Login
+- `GET /api/auth/me` - Get current user
 
-#### Backend (.env)
-```bash
-# Database
-DATABASE_URL=postgresql://username:password@host:port/database
+### Products
+- `POST /api/products` - Create product with variants
+- `GET /api/products` - List products
+- `GET /api/products/{id}` - Get product details
+- `PUT /api/products/{id}` - Update product
+- `POST /api/products/{id}/variants` - Add variant
+- `PUT /api/products/variants/{id}` - Update variant
 
-# Security
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+### POS
+- `POST /api/pos/sales` - Create sale (atomic transaction)
+- `GET /api/pos/sales` - List sales
+- `GET /api/pos/sales/{id}` - Get sale details
 
-# CORS
-CORS_ALLOW_ORIGINS=["https://your-frontend-domain.com"]
+### Receipts
+- `GET /api/receipts/{sale_id}/pdf` - Download PDF receipt
 
-# Admin Seeding
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=your-secure-password
+### Analytics
+- `GET /api/analytics/summary` - Get sales analytics (with date filtering)
 
-# Environment
-ENVIRONMENT=production
-```
+### Users
+- `GET /api/users` - List organization users
+- `POST /api/users` - Create user
+- `PATCH /api/users/{id}` - Update user
+- `DELETE /api/users/{id}` - Delete user
 
-#### Frontend (API Configuration)
-Update the API base URL in your Flutter app to point to the production backend:
-```dart
-// In your API service file
-static const String baseUrl = 'https://bstock-bv2k.onrender.com';
-```
+## 🗄️ Database Schema
 
-## 🚀 Deployment
+### Key Models
 
-### Backend Deployment (Render)
-1. Connect your GitHub repository to Render
-2. Configure environment variables in Render dashboard
-3. Set the build command: `pip install -r requirements.txt`
-4. Set the start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+**Organization**
+- Multi-tenant root entity
+- Has owner, products, sales, users
 
-### Frontend Deployment
-The Flutter app can be deployed as:
-- **Web App**: Using Vercel or Netlify
-- **Mobile App**: Build APK/IPA and distribute via app stores
-- **Progressive Web App**: With service workers for offline functionality
+**User**
+- Belongs to one organization
+- Role: owner or cashier
+
+**Product**
+- Base product (e.g., "T-Shirt")
+- Has multiple variants
+
+**Variant**
+- Specific sellable item with SKU, barcode
+- Attributes (JSON): size, color, etc.
+- Pricing and inventory
+
+**Sale**
+- Complete transaction record
+- Payment method, totals, profit
+
+**SaleItem**
+- Individual items in a sale
+- Records price at time of sale
+
+## 🔒 Security
+
+- JWT-based authentication with organization_id in token
+- All database queries scoped to authenticated user's organization
+- Password hashing with bcrypt
+- Role-based access control
+- CORS protection
+- SQL injection prevention
+
+## 📈 Performance
+
+- Optimized database queries with eager loading
+- Indexed fields for fast lookups
+- Decimal precision for financial calculations
+- Efficient state management in Flutter
+- Offline support with local database
+- Automatic background sync
 
 ## 🧪 Testing
 
@@ -258,55 +302,47 @@ cd frontend
 flutter test
 ```
 
-## 📈 Performance & Security
+## 🚀 Deployment
 
-### Security Features
-- JWT-based authentication
-- Password hashing with bcrypt
-- CORS protection
-- SQL injection prevention
-- Input validation and sanitization
+### Backend (Render/Railway/Fly.io)
+1. Connect repository
+2. Set environment variables
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
-### Performance Optimizations
-- Database query optimization
-- Efficient state management
-- Image compression and caching
-- Lazy loading of data
-- WebSocket connection pooling
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue on GitHub
-- Contact the development team
-- Check the [API documentation](https://bstock-bv2k.onrender.com/docs)
+### Frontend
+- **Web**: Deploy to Vercel/Netlify
+- **Mobile**: Build APK/IPA and distribute
 
 ## 🎯 Roadmap
 
-- [ ] Advanced analytics and reporting
-- [ ] Multi-warehouse support
-- [ ] Integration with external accounting systems
-- [ ] Mobile push notifications
-- [ ] Offline functionality
-- [ ] API rate limiting
-- [ ] Advanced search and filtering
-- [ ] Export/import functionality
+- [x] Multi-tenant architecture
+- [x] Product variants
+- [x] POS system
+- [x] PDF receipts
+- [x] Analytics
+- [ ] Customer management
+- [ ] Vendor management
+- [ ] Purchase orders
+- [ ] Inventory adjustments
+- [ ] Multi-currency support
+- [ ] Tax calculation
+- [ ] Loyalty programs
+- [ ] Employee commission tracking
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🆘 Support
+
+For questions or issues:
+- Create an issue on GitHub
+- Check API documentation at `/docs` endpoint
 
 ---
 
 <div align="center">
-  <p>Built with ❤️ using Flutter and FastAPI</p>
+  <p>Built with ❤️ for small businesses everywhere</p>
   <p>© 2024 BstocK. All rights reserved.</p>
 </div>

@@ -1,86 +1,104 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import timedelta
 from typing import List
 
 from .. import auth, crud, models, schemas
 from ..database import get_db
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/api/users",
+    tags=["users"],
+)
 
-def get_current_user(token: str = Depends(auth.oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+
+@router.get("/", response_model=List[schemas.User])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_owner)
+):
+    """List all users in the current organization (owner only)."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    users = crud.get_users(
+        db=db,
+        organization_id=current_user.organization_id
     )
-    try:
-        payload = auth.jwt.decode(token, auth.settings.SECRET_KEY, algorithms=[auth.settings.JWT_ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = schemas.TokenData(username=username)
-    except auth.JWTError:
-        raise credentials_exception
-    user = crud.get_user_by_username(db, username=token_data.username)
-    if user is None:
-        raise credentials_exception
-    return user
-
-def get_current_active_user(current_user: models.User = Depends(get_current_user)):
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-def get_current_active_admin(current_user: models.User = Depends(get_current_active_user)):
-    if current_user.role != models.UserRole.admin:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    return current_user
-
-@router.post("/users/", response_model=schemas.User, dependencies=[Depends(auth.get_current_active_admin)])
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_username(db, username=user.username)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    return crud.create_user(db=db, user=user)
-
-@router.post("/token", response_model=schemas.Token)
-def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
-    user = crud.get_user_by_username(db, username=form_data.username)
-    if not user or not auth.verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=auth.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = auth.create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@router.get("/users/me/", response_model=schemas.User)
-def read_users_me(current_user: models.User = Depends(get_current_active_user)):
-    return current_user
-
-@router.get("/users/", response_model=List[schemas.User], dependencies=[Depends(get_current_active_admin)])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users = crud.get_users(db, skip=skip, limit=limit)
     return users
 
-@router.put("/users/{user_id}", response_model=schemas.User, dependencies=[Depends(get_current_active_admin)])
-def update_user_role(user_id: int, user_in: schemas.UserUpdate, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user = crud.update_user(db=db, user=user, user_in=user_in)
-    return user
 
-@router.delete("/users/{user_id}", response_model=schemas.User, dependencies=[Depends(get_current_active_admin)])
-def remove_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user = crud.delete_user(db=db, user=user)
-    return user
+@router.post("/", response_model=schemas.User, status_code=201)
+def create_user(
+    user_in: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_owner)
+):
+    """Create a new user (cashier or owner) within the current organization."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    
+    if user_in.organization_id and user_in.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create users for another organization")
+    
+    existing_user = crud.get_user_by_username(
+        db=db,
+        username=user_in.username,
+        organization_id=current_user.organization_id
+    )
+    if existing_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists in this organization")
+    
+    hashed_password = auth.get_password_hash(user_in.password)
+    db_user = crud.create_user(
+        db=db,
+        user=schemas.UserCreate(
+            username=user_in.username,
+            password=user_in.password,
+            role=user_in.role,
+            organization_id=current_user.organization_id
+        ),
+        hashed_password=hashed_password
+    )
+    return db_user
+
+
+@router.patch("/{user_id}", response_model=schemas.User)
+def update_user(
+    user_id: int,
+    user_update: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_owner)
+):
+    """Update a user's role or active status (owner only)."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    
+    user = crud.get_user_by_id(db=db, user_id=user_id)
+    if not user or user.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    if user.id == current_user.id and user_update.role and user_update.role != user.role:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot change your own role")
+    
+    updated_user = crud.update_user(db=db, user=user, user_in=user_update)
+    return updated_user
+
+
+@router.delete("/{user_id}", response_model=schemas.User)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_owner)
+):
+    """Delete a user from the organization (owner only)."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    
+    user = crud.get_user_by_id(db=db, user_id=user_id)
+    if not user or user.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    if user.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete yourself")
+    
+    deleted_user = crud.delete_user(db=db, user=user)
+    return deleted_user

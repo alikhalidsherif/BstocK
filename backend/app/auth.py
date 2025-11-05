@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -42,10 +42,18 @@ def _get_user_from_token(token: str, db: Session):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
+        token_data = schemas.TokenData(
+            username=username,
+            organization_id=payload.get("organization_id")
+        )
     except JWTError:
         raise credentials_exception
     
-    user = crud.get_user_by_username(db, username=username)
+    user = crud.get_user_by_username(
+        db,
+        username=token_data.username,
+        organization_id=token_data.organization_id
+    )
     if user is None:
         raise credentials_exception
     return user
@@ -66,23 +74,24 @@ def get_current_active_user(current_user: schemas.User = Depends(get_current_use
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Dependency to check if the user is an admin
-def get_current_active_admin(current_user: schemas.User = Depends(get_current_active_user)):
-    if current_user.role != schemas.UserRole.admin:
+# Dependency to check if the user is an owner
+def get_current_active_owner(current_user: schemas.User = Depends(get_current_active_user)):
+    from .models import UserRole
+    if current_user.role != UserRole.owner:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return current_user
 
-# Dependency to check if the user is an admin or supervisor
-def get_current_active_admin_or_supervisor(current_user: schemas.User = Depends(get_current_active_user)):
-    if current_user.role not in (schemas.UserRole.admin, schemas.UserRole.supervisor):
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-    return current_user
-
-# Dependency for query-param-based auth requiring admin or supervisor (for downloads)
-def get_current_admin_or_supervisor_for_export(token: str = Query(None), db: Session = Depends(get_db)):
+# Dependency for query-param-based auth requiring owner (for downloads)
+def get_current_owner_for_export(token: str = Query(None), db: Session = Depends(get_db)):
+    from .models import UserRole
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     user = _get_user_from_token(token=token, db=db)
-    if user.role not in (schemas.UserRole.admin, schemas.UserRole.supervisor):
+    if user.role != UserRole.owner:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     return user
+
+# Legacy aliases for backward compatibility
+get_current_active_admin = get_current_active_owner
+get_current_active_admin_or_supervisor = get_current_active_owner
+get_current_admin_or_supervisor_for_export = get_current_owner_for_export
