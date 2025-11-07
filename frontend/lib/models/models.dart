@@ -1,15 +1,21 @@
-// Used to represent user roles from the backend
-enum UserRole { clerk, admin, supervisor }
+// User roles matching the backend
+enum UserRole { owner, cashier }
 
 class User {
   final int id;
   final String username;
   final UserRole role;
+  final int? organizationId;
+  final bool isActive;
+  final DateTime createdAt;
 
   User({
     required this.id,
     required this.username,
     required this.role,
+    this.organizationId,
+    required this.isActive,
+    required this.createdAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -17,158 +23,384 @@ class User {
       id: json['id'],
       username: json['username'],
       role: _parseRole(json['role']),
+      organizationId: json['organization_id'],
+      isActive: json['is_active'] ?? true,
+      createdAt: DateTime.parse(json['created_at']),
     );
   }
 
   static UserRole _parseRole(dynamic raw) {
-    if (raw == null) return UserRole.clerk;
+    if (raw == null) return UserRole.cashier;
     final String value = raw.toString();
-    // Accept backend enum values like 'clerk', 'admin', 'supervisor'
     switch (value) {
-      case 'clerk':
-        return UserRole.clerk;
-      case 'admin':
-        return UserRole.admin;
-      case 'supervisor':
-        return UserRole.supervisor;
+      case 'owner':
+        return UserRole.owner;
+      case 'cashier':
+        return UserRole.cashier;
       default:
-        // Also accept prefixed names like 'UserRole.admin'
-        if (value.endsWith('.admin')) return UserRole.admin;
-        if (value.endsWith('.supervisor')) return UserRole.supervisor;
-        return UserRole.clerk;
-      }
+        if (value.endsWith('.owner')) return UserRole.owner;
+        return UserRole.cashier;
+    }
+  }
+}
+
+class Variant {
+  final int id;
+  final int productId;
+  final String sku;
+  final String? barcode;
+  final Map<String, dynamic>? attributes;
+  final double purchasePrice;
+  final double salePrice;
+  final int quantity;
+  final int minStockLevel;
+  final String unitType;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+
+  Variant({
+    required this.id,
+    required this.productId,
+    required this.sku,
+    this.barcode,
+    this.attributes,
+    required this.purchasePrice,
+    required this.salePrice,
+    required this.quantity,
+    required this.minStockLevel,
+    required this.unitType,
+    required this.isActive,
+    required this.createdAt,
+    this.updatedAt,
+  });
+
+  factory Variant.fromJson(Map<String, dynamic> json) {
+    return Variant(
+      id: json['id'],
+      productId: json['product_id'],
+      sku: json['sku'],
+      barcode: json['barcode'],
+      attributes: json['attributes'] != null 
+          ? Map<String, dynamic>.from(json['attributes'])
+          : null,
+      purchasePrice: _parseDecimal(json['purchase_price']),
+      salePrice: _parseDecimal(json['sale_price']),
+      quantity: json['quantity'],
+      minStockLevel: json['min_stock_level'] ?? 0,
+      unitType: json['unit_type'] ?? 'pcs',
+      isActive: json['is_active'] ?? true,
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+    );
+  }
+
+  static double _parseDecimal(dynamic value) {
+    if (value is String) {
+      return double.parse(value);
+    }
+    return (value as num).toDouble();
   }
 }
 
 class Product {
   final int id;
-  final String barcode;
   final String name;
-  final double price;
-  final int quantity;
-  final String category;
+  final String? description;
+  final String? category;
+  final int organizationId;
   final bool isArchived;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+  final List<Variant> variants;
 
   Product({
     required this.id,
-    required this.barcode,
     required this.name,
-    required this.price,
-    required this.quantity,
-    required this.category,
-    this.isArchived = false,
+    this.description,
+    this.category,
+    required this.organizationId,
+    required this.isArchived,
+    required this.createdAt,
+    this.updatedAt,
+    required this.variants,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'],
-      barcode: json['barcode'],
       name: json['name'],
-      price: (json['price'] as num).toDouble(),
-      quantity: json['quantity'],
-      category: json['category'] ?? 'Uncategorized',
+      description: json['description'],
+      category: json['category'],
+      organizationId: json['organization_id'],
       isArchived: json['is_archived'] ?? false,
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      variants: (json['variants'] as List<dynamic>?)
+              ?.map((v) => Variant.fromJson(v))
+              .toList() ??
+          [],
     );
   }
 }
 
-// Enums for Change Requests
-enum ChangeRequestAction { add, update, sell, create, archive, restore, delete, mark_paid }
-
-enum ChangeRequestStatus { pending, approved, rejected }
-
-class ChangeRequest {
+class Customer {
   final int id;
-  final Product? product;
-  final int? quantityChange;
-  final ChangeRequestAction action;
-  final User requester;
-  final String? buyerName;
-  final String? paymentStatus;
-  final String? newProductName;
-  final String? newProductBarcode;
-  final double? newProductPrice;
-  final int? newProductQuantity;
-  final String? newProductCategory;
+  final String name;
+  final String? phone;
+  final String? email;
+  final String? address;
+  final int organizationId;
+  final DateTime createdAt;
 
-  ChangeRequest({
+  Customer({
     required this.id,
-    this.product,
-    this.quantityChange,
-    required this.action,
-    required this.requester,
-    this.buyerName,
-    this.paymentStatus,
-    this.newProductName,
-    this.newProductBarcode,
-    this.newProductPrice,
-    this.newProductQuantity,
-    this.newProductCategory,
+    required this.name,
+    this.phone,
+    this.email,
+    this.address,
+    required this.organizationId,
+    required this.createdAt,
   });
 
-  factory ChangeRequest.fromJson(Map<String, dynamic> json) {
-    return ChangeRequest(
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    return Customer(
       id: json['id'],
-      product:
-          json['product'] != null ? Product.fromJson(json['product']) : null,
-      quantityChange: json['quantity_change'],
-      action: ChangeRequestAction.values.firstWhere(
-        (e) => e.name == json['action'],
-        orElse: () => ChangeRequestAction.add,
-      ),
-      requester: User.fromJson(json['requester']),
-      buyerName: json['buyer_name'],
-      paymentStatus: json['payment_status'],
-      newProductName: json['new_product_name'],
-      newProductBarcode: json['new_product_barcode'],
-      newProductPrice: json['new_product_price'] != null
-          ? (json['new_product_price'] as num).toDouble()
-          : null,
-      newProductQuantity: json['new_product_quantity'],
-      newProductCategory: json['new_product_category'],
+      name: json['name'],
+      phone: json['phone'],
+      email: json['email'],
+      address: json['address'],
+      organizationId: json['organization_id'],
+      createdAt: DateTime.parse(json['created_at']),
     );
   }
 }
 
-class ChangeHistory {
+class Vendor {
   final int id;
-  final Product? product;
-  final int? quantityChange;
-  final ChangeRequestAction action;
-  final ChangeRequestStatus status;
-  final User requester;
-  final User? reviewer;
-  final DateTime timestamp;
-  final String? buyerName;
-  final String? paymentStatus;
+  final String name;
+  final String? contactPerson;
+  final String? phone;
+  final String? email;
+  final String? address;
+  final int organizationId;
+  final DateTime createdAt;
 
-  ChangeHistory({
+  Vendor({
     required this.id,
-    this.product,
-    this.quantityChange,
-    required this.action,
-    required this.status,
-    required this.requester,
-    this.reviewer,
-    required this.timestamp,
-    this.buyerName,
-    this.paymentStatus,
+    required this.name,
+    this.contactPerson,
+    this.phone,
+    this.email,
+    this.address,
+    required this.organizationId,
+    required this.createdAt,
   });
 
-  factory ChangeHistory.fromJson(Map<String, dynamic> json) {
-    return ChangeHistory(
+  factory Vendor.fromJson(Map<String, dynamic> json) {
+    return Vendor(
       id: json['id'],
-      product: json['product'] != null ? Product.fromJson(json['product']) : null,
-      quantityChange: json['quantity_change'],
-      action: ChangeRequestAction.values.firstWhere((e) => e.name == json['action'], orElse: () => ChangeRequestAction.add),
-      status: ChangeRequestStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => ChangeRequestStatus.pending),
-      requester: User.fromJson(json['requester']),
-      reviewer: json['reviewer'] != null ? User.fromJson(json['reviewer']) : null,
-      timestamp: DateTime.parse(json['timestamp']),
-      buyerName: json['buyer_name'],
-      paymentStatus: json['payment_status'],
+      name: json['name'],
+      contactPerson: json['contact_person'],
+      phone: json['phone'],
+      email: json['email'],
+      address: json['address'],
+      organizationId: json['organization_id'],
+      createdAt: DateTime.parse(json['created_at']),
     );
   }
 }
 
-// More models for Sales and ChangeRequests can be added here later. 
+enum PaymentMethod { cash, card, mobile, bank_transfer }
+
+class SaleItem {
+  final int id;
+  final int saleId;
+  final int variantId;
+  final int quantity;
+  final double priceAtSale;
+  final double purchasePriceAtSale;
+  final Variant? variant;
+
+  SaleItem({
+    required this.id,
+    required this.saleId,
+    required this.variantId,
+    required this.quantity,
+    required this.priceAtSale,
+    required this.purchasePriceAtSale,
+    this.variant,
+  });
+
+  factory SaleItem.fromJson(Map<String, dynamic> json) {
+    return SaleItem(
+      id: json['id'],
+      saleId: json['sale_id'],
+      variantId: json['variant_id'],
+      quantity: json['quantity'],
+      priceAtSale: _parseDecimal(json['price_at_sale']),
+      purchasePriceAtSale: _parseDecimal(json['purchase_price_at_sale']),
+      variant: json['variant'] != null ? Variant.fromJson(json['variant']) : null,
+    );
+  }
+
+  static double _parseDecimal(dynamic value) {
+    if (value is String) {
+      return double.parse(value);
+    }
+    return (value as num).toDouble();
+  }
+}
+
+class Sale {
+  final int id;
+  final int organizationId;
+  final int cashierId;
+  final int? customerId;
+  final double subtotal;
+  final double tax;
+  final double discount;
+  final double totalAmount;
+  final double profit;
+  final PaymentMethod paymentMethod;
+  final String? paymentProofUrl;
+  final String? notes;
+  final bool synced;
+  final DateTime createdAt;
+  final List<SaleItem> items;
+  final User? cashier;
+  final Customer? customer;
+
+  Sale({
+    required this.id,
+    required this.organizationId,
+    required this.cashierId,
+    this.customerId,
+    required this.subtotal,
+    required this.tax,
+    required this.discount,
+    required this.totalAmount,
+    required this.profit,
+    required this.paymentMethod,
+    this.paymentProofUrl,
+    this.notes,
+    required this.synced,
+    required this.createdAt,
+    required this.items,
+    this.cashier,
+    this.customer,
+  });
+
+  factory Sale.fromJson(Map<String, dynamic> json) {
+    return Sale(
+      id: json['id'],
+      organizationId: json['organization_id'],
+      cashierId: json['cashier_id'],
+      customerId: json['customer_id'],
+      subtotal: _parseDecimal(json['subtotal']),
+      tax: _parseDecimal(json['tax']),
+      discount: _parseDecimal(json['discount']),
+      totalAmount: _parseDecimal(json['total_amount']),
+      profit: _parseDecimal(json['profit']),
+      paymentMethod: _parsePaymentMethod(json['payment_method']),
+      paymentProofUrl: json['payment_proof_url'],
+      notes: json['notes'],
+      synced: json['synced'] ?? true,
+      createdAt: DateTime.parse(json['created_at']),
+      items: (json['items'] as List<dynamic>?)
+              ?.map((item) => SaleItem.fromJson(item))
+              .toList() ??
+          [],
+      cashier: json['cashier'] != null ? User.fromJson(json['cashier']) : null,
+      customer: json['customer'] != null ? Customer.fromJson(json['customer']) : null,
+    );
+  }
+
+  static double _parseDecimal(dynamic value) {
+    if (value is String) {
+      return double.parse(value);
+    }
+    return (value as num).toDouble();
+  }
+
+  static PaymentMethod _parsePaymentMethod(dynamic value) {
+    final str = value.toString();
+    switch (str) {
+      case 'cash':
+        return PaymentMethod.cash;
+      case 'card':
+        return PaymentMethod.card;
+      case 'mobile':
+        return PaymentMethod.mobile;
+      case 'bank_transfer':
+        return PaymentMethod.bank_transfer;
+      default:
+        return PaymentMethod.cash;
+    }
+  }
+}
+
+class BestSellingVariant {
+  final int variantId;
+  final String sku;
+  final String productName;
+  final int totalQuantitySold;
+  final double totalRevenue;
+
+  BestSellingVariant({
+    required this.variantId,
+    required this.sku,
+    required this.productName,
+    required this.totalQuantitySold,
+    required this.totalRevenue,
+  });
+
+  factory BestSellingVariant.fromJson(Map<String, dynamic> json) {
+    return BestSellingVariant(
+      variantId: json['variant_id'],
+      sku: json['sku'],
+      productName: json['product_name'],
+      totalQuantitySold: json['total_quantity_sold'],
+      totalRevenue: _parseDecimal(json['total_revenue']),
+    );
+  }
+
+  static double _parseDecimal(dynamic value) {
+    if (value is String) {
+      return double.parse(value);
+    }
+    return (value as num).toDouble();
+  }
+}
+
+class AnalyticsSummary {
+  final double totalRevenue;
+  final double totalProfit;
+  final int totalSalesCount;
+  final List<BestSellingVariant> bestSellingVariants;
+
+  AnalyticsSummary({
+    required this.totalRevenue,
+    required this.totalProfit,
+    required this.totalSalesCount,
+    required this.bestSellingVariants,
+  });
+
+  factory AnalyticsSummary.fromJson(Map<String, dynamic> json) {
+    return AnalyticsSummary(
+      totalRevenue: _parseDecimal(json['total_revenue']),
+      totalProfit: _parseDecimal(json['total_profit']),
+      totalSalesCount: json['total_sales_count'],
+      bestSellingVariants: (json['best_selling_variants'] as List<dynamic>)
+          .map((item) => BestSellingVariant.fromJson(item))
+          .toList(),
+    );
+  }
+
+  static double _parseDecimal(dynamic value) {
+    if (value is String) {
+      return double.parse(value);
+    }
+    return (value as num).toDouble();
+  }
+}

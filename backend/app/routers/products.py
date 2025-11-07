@@ -99,6 +99,25 @@ def get_product(
     return product
 
 
+@router.get("/variants/barcode/{barcode}", response_model=schemas.Variant)
+def get_variant_by_barcode(
+    barcode: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """Lookup a variant by barcode within the current organization."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    variant = crud.get_variant_by_barcode(
+        db=db,
+        barcode=barcode,
+        organization_id=current_user.organization_id
+    )
+    if not variant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Variant not found")
+    return variant
+
+
 @router.put("/{product_id}", response_model=schemas.Product)
 def update_product(
     product_id: int,
@@ -219,3 +238,18 @@ def get_categories(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
     categories = crud.get_product_categories(db=db, organization_id=current_user.organization_id)
     return [category[0] for category in categories if category[0]]
+
+
+@router.get("/variants/low-stock", response_model=List[schemas.Variant])
+def get_low_stock_variants(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """Get variants that are below their minimum stock level."""
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User not associated with any organization")
+    low_stock = crud.get_low_stock_variants(
+        db=db,
+        organization_id=current_user.organization_id
+    )
+    return low_stock
