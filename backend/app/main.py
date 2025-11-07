@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from . import models, auth
-from .routers import users, inventory, products, history
+from .routers import auth as auth_router, products, pos, receipts, analytics, users
 from .routers import realtime
 from .config import settings
 
@@ -17,8 +17,8 @@ redoc_url = None if settings.DISABLE_OPENAPI else "/redoc"
 
 app = FastAPI(
     title="BstocK API",
-    description="API for the BstocK inventory management system.",
-    version="0.1.0",
+    description="Multi-tenant POS and Business Management API",
+    version="2.0.0",
     openapi_url=openapi_url,
     docs_url=docs_url,
     redoc_url=redoc_url,
@@ -33,12 +33,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include inventory, products, and history routers first to avoid prefix clash
-app.include_router(inventory.router)
+# Register routers
+app.include_router(auth_router.router)
+app.include_router(users.router)
 app.include_router(products.router)
-app.include_router(history.router)
-# Users router handles user endpoints (including /api/token and /api/users/*)
-app.include_router(users.router, prefix="/api", tags=["Users"])
+app.include_router(pos.router)
+app.include_router(receipts.router)
+app.include_router(analytics.router)
 app.include_router(realtime.router)
 
 @app.get("/")
