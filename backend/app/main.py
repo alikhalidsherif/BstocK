@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from . import models, auth
-from .routers import auth as auth_router, products, pos, receipts, analytics, users
+from .routers import auth as auth_router, products, pos, receipts, analytics, users, customers, vendors
 from .routers import realtime
 from .config import settings
 
@@ -37,6 +37,8 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(users.router)
 app.include_router(products.router)
+app.include_router(customers.router)
+app.include_router(vendors.router)
 app.include_router(pos.router)
 app.include_router(receipts.router)
 app.include_router(analytics.router)
