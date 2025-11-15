@@ -24,14 +24,24 @@ app = FastAPI(
     redoc_url=redoc_url,
 )
 
-# CORS Middleware Configuration - Permissive for testing
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS Middleware Configuration
+# Uses settings from config for production safety
+cors_kwargs = {
+    "allow_credentials": settings.CORS_ALLOW_CREDENTIALS,
+    "allow_methods": settings.CORS_ALLOW_METHODS,
+    "allow_headers": settings.CORS_ALLOW_HEADERS,
+}
+
+# Allow specific origins or use regex pattern
+if settings.CORS_ALLOW_ORIGINS:
+    cors_kwargs["allow_origins"] = settings.CORS_ALLOW_ORIGINS
+elif settings.CORS_ALLOW_ORIGIN_REGEX:
+    cors_kwargs["allow_origin_regex"] = settings.CORS_ALLOW_ORIGIN_REGEX
+else:
+    # Fallback for development only - should be configured in production
+    cors_kwargs["allow_origins"] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 # Register routers
 app.include_router(auth_router.router)
