@@ -17,7 +17,7 @@ async def websocket_updates(websocket: WebSocket):
     db = SessionLocal()
     try:
         try:
-            payload = auth.jwt.decode(token, auth.settings.SECRET_KEY, algorithms=[auth.settings.ALGORITHM])
+            payload = auth.jwt.decode(token, auth.settings.SECRET_KEY, algorithms=[auth.settings.JWT_ALGORITHM])
             username = payload.get("sub")
             if not username:
                 await websocket.close(code=4401)
