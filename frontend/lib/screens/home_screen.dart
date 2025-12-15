@@ -1,12 +1,13 @@
+import 'package:bstock_app/widgets/product_search_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/change_request_provider.dart'; // Added import for ChangeRequestProvider
 import '../providers/history_provider.dart';
 import '../models/models.dart';
-import 'package:bstock_app/widgets/product_search_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -242,7 +243,20 @@ class _HomeScreenState extends State<HomeScreen> {
         childAspectRatio: 1.2,
       ),
       itemCount: actions.length,
-      itemBuilder: (context, index) => actions[index],
+      itemBuilder: (context, index) => actions[index]
+          .animate(
+            delay: (80 * index).ms,
+          )
+          .fadeIn(
+            duration: 320.ms,
+            curve: Curves.easeOut,
+          )
+          .slideY(
+            begin: 0.08,
+            end: 0,
+            duration: 360.ms,
+            curve: Curves.easeOut,
+          ),
     );
   }
 
@@ -288,6 +302,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(
+          duration: 360.ms,
+          curve: Curves.easeOut,
+        )
+        .slideY(
+          begin: 0.06,
+          end: 0,
+          duration: 360.ms,
+          curve: Curves.easeOut,
+        );
   }
 } 

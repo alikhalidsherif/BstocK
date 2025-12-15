@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     
     DATABASE_URL_raw: str = Field("sqlite:///./stock_dev.db", alias='DATABASE_URL')
     SECRET_KEY_raw: str = Field("change_me_in_production", alias='SECRET_KEY')
+    MASTER_USERNAME_raw: str = Field("bstock_master", alias='MASTER_USERNAME')
+    MASTER_PASSWORD_raw: str = Field("change_me_master", alias='MASTER_PASSWORD')
     ENVIRONMENT_raw: str = Field("development", alias='ENVIRONMENT')
     JWT_ALGORITHM_raw: str = Field("HS256", alias='JWT_ALGORITHM')
     ACCESS_TOKEN_EXPIRE_MINUTES_raw: int = Field(30, alias='ACCESS_TOKEN_EXPIRE_MINUTES')
@@ -47,6 +49,16 @@ class Settings(BaseSettings):
     @property
     def SECRET_KEY(self) -> str:
         return self.SECRET_KEY_raw
+
+    @computed_field
+    @property
+    def MASTER_USERNAME(self) -> str:
+        return self.MASTER_USERNAME_raw
+
+    @computed_field
+    @property
+    def MASTER_PASSWORD(self) -> str:
+        return self.MASTER_PASSWORD_raw
 
     @computed_field
     @property

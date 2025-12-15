@@ -8,6 +8,7 @@ gunicorn==21.2.0
 # Database and ORM
 SQLAlchemy==2.0.25
 psycopg2-binary==2.9.9
+alembic==1.13.2
 
 # Configuration and settings
 pydantic-settings==2.10.1

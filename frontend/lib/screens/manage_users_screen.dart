@@ -21,6 +21,23 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     });
   }
 
+  Future<void> _handleDeleteUser(User user) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await Provider.of<UserProvider>(context, listen: false).deleteUser(user.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text("Deleted user '${user.username}'")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceFirst('Exception: ', '');
+      messenger.showSnackBar(
+        SnackBar(content: Text(message.isEmpty ? 'Failed to delete user' : message)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,37 +85,48 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                     final user = userProvider.users[index];
                     return GenericListItem(
                       title: user.username,
-                      subtitle: 'Role: ${user.role.toString().split('.').last}',
+                      subtitle: 'Role: ${user.role.toString().split('.').last}${user.isMaster ? ' • Master' : ''}',
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _buildRolePopupMenu(context, user),
+                          if (user.isMaster)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0),
+                              child: Chip(
+                                label: Text('Master'),
+                                backgroundColor: Colors.black54,
+                                labelStyle: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          if (!user.isMaster) _buildRolePopupMenu(context, user),
                           IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Delete'),
-                                    content: Text('Are you sure you want to delete ${user.username}?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          Provider.of<UserProvider>(context, listen: false).deleteUser(user.id);
-                                        },
-                                        child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
+                            icon: Icon(Icons.delete, color: user.isMaster ? Colors.grey : Colors.red),
+                            onPressed: user.isMaster
+                                ? null
+                                : () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          title: const Text('Confirm Delete'),
+                                          content: Text('Are you sure you want to delete ${user.username}?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(context).pop(),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop();
+                                                await _handleDeleteUser(user);
+                                              },
+                                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
                           ),
                         ],
                       ),
@@ -114,6 +142,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Widget _buildRolePopupMenu(BuildContext context, User user) {
+    if (user.isMaster) {
+      return const SizedBox.shrink();
+    }
     return PopupMenuButton<UserRole>(
       onSelected: (UserRole role) {
         Provider.of<UserProvider>(context, listen: false).updateUserRole(user.id, role);

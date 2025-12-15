@@ -1,10 +1,11 @@
+import 'package:bstock_app/models/models.dart';
 import 'package:bstock_app/providers/auth_provider.dart';
+import 'package:bstock_app/providers/history_provider.dart';
 import 'package:bstock_app/widgets/app_drawer.dart';
+import 'package:bstock_app/widgets/decorated_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:bstock_app/models/models.dart';
-import 'package:bstock_app/providers/history_provider.dart';
 
 class ShellScreen extends StatelessWidget {
   final Widget child;
@@ -16,7 +17,7 @@ class ShellScreen extends StatelessWidget {
     final bool isAdmin = Provider.of<AuthProvider>(context).user?.role == UserRole.admin;
     final String title = _getTitleForLocation(GoRouterState.of(context).matchedLocation);
 
-    return Scaffold(
+    return DecoratedScaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [

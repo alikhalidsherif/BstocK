@@ -2,6 +2,7 @@ import 'package:bstock_app/providers/history_provider.dart';
 import 'package:bstock_app/providers/product_provider.dart';
 import 'package:bstock_app/providers/theme_provider.dart';
 import 'package:bstock_app/providers/user_provider.dart';
+import 'package:bstock_app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';

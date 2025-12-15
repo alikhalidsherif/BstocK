@@ -3,9 +3,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
+from sqlalchemy.exc import IntegrityError
 
 from .. import auth, crud, models, schemas
 from ..database import get_db
+from ..config import settings
 
 router = APIRouter()
 
@@ -43,6 +45,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
+    if user.username == settings.MASTER_USERNAME:
+        raise HTTPException(status_code=400, detail="MASTER_USERNAME is reserved for the master account.")
     return crud.create_user(db=db, user=user)
 
 @router.post("/token", response_model=schemas.Token)
@@ -74,7 +78,10 @@ def update_user_role(user_id: int, user_in: schemas.UserUpdate, db: Session = De
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user = crud.update_user(db=db, user=user, user_in=user_in)
+    try:
+        user = crud.update_user(db=db, user=user, user_in=user_in)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     return user
 
 @router.delete("/users/{user_id}", response_model=schemas.User, dependencies=[Depends(get_current_active_admin)])
@@ -82,5 +89,13 @@ def remove_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    user = crud.delete_user(db=db, user=user)
+    try:
+        user = crud.delete_user(db=db, user=user)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except IntegrityError:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete user because they are referenced in change requests or history.",
+        )
     return user

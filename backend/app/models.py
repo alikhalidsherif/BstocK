@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+from .config import settings
 import datetime
 
 class UserRole(enum.Enum):
@@ -29,10 +30,15 @@ class User(Base):
 
     # This relationship links a user to the change requests they have submitted.
     change_requests = relationship(
-        "ChangeRequest", 
-        foreign_keys="[ChangeRequest.requester_id]", 
-        back_populates="requester"
+        "ChangeRequest",
+        foreign_keys="[ChangeRequest.requester_id]",
+        back_populates="requester",
+        passive_deletes=True,
     )
+
+    @property
+    def is_master(self) -> bool:
+        return self.username == settings.MASTER_USERNAME
 
 class Product(Base):
     __tablename__ = "products"
@@ -71,8 +77,16 @@ class ChangeRequest(Base):
     __tablename__ = "change_requests"
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=True) # Can be null for 'create'
-    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    approver_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    requester_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    approver_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     action = Column(Enum(ChangeRequestAction), nullable=False)
     quantity_change = Column(Integer, nullable=True) # Now nullable
     # Optional link to a specific history entry (used for mark_paid workflow)
@@ -96,8 +110,17 @@ class ChangeRequest(Base):
     approval_date = Column(DateTime(timezone=True), nullable=True)
 
     product = relationship("Product", back_populates="change_requests")
-    requester = relationship("User", back_populates="change_requests", foreign_keys=[requester_id])
-    approver = relationship("User", foreign_keys=[approver_id])
+    requester = relationship(
+        "User",
+        back_populates="change_requests",
+        foreign_keys=[requester_id],
+        passive_deletes=True,
+    )
+    approver = relationship(
+        "User",
+        foreign_keys=[approver_id],
+        passive_deletes=True,
+    )
 
 class ChangeHistory(Base):
     __tablename__ = "change_history"
@@ -107,8 +130,16 @@ class ChangeHistory(Base):
     quantity_change = Column(Integer, nullable=True) # Now nullable
     action = Column(Enum(ChangeRequestAction), nullable=False)
     status = Column(Enum(ChangeRequestStatus), nullable=False) # approved or rejected
-    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    requester_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewer_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     # Fields to store details from the original request
@@ -116,5 +147,13 @@ class ChangeHistory(Base):
     payment_status = Column(Enum(PaymentStatus), nullable=True)
 
     product = relationship("Product", back_populates="history_entries")
-    requester = relationship("User", foreign_keys=[requester_id])
-    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    requester = relationship(
+        "User",
+        foreign_keys=[requester_id],
+        passive_deletes=True,
+    )
+    reviewer = relationship(
+        "User",
+        foreign_keys=[reviewer_id],
+        passive_deletes=True,
+    )

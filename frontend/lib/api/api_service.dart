@@ -38,24 +38,28 @@ class TimeoutAuthException implements Exception {
 }
 
 class ApiService {
-  // The name inside String.fromEnvironment MUST match the key you used in Vercel.
-  static const String apiUrl = String.fromEnvironment(
-      'FLUTTER_WEB_API_URL', // This name must be exact.
-      defaultValue: 'http://127.0.0.1:8000',
+  static const String _primaryBackend = 'https://bstockapi.ashreef.com';
+  static const String _secondaryBackend = 'https://bstock-bv2k.onrender.com';
+
+  // Web builds can override the backend via --dart-define FLUTTER_WEB_API_URL=<url>
+  static const String webApiBase = String.fromEnvironment(
+    'FLUTTER_WEB_API_URL',
+    defaultValue: _primaryBackend,
   );
-  
-  // For mobile devices, we'll also support the same environment variable
-  static const String defaultDeviceBase = String.fromEnvironment('FLUTTER_WEB_API_URL', defaultValue: 'http://10.0.2.2:8000');
+
+  // Mobile/desktop builds can override via --dart-define FLUTTER_DEVICE_API_URL=<url>
+  static const String deviceApiBase = String.fromEnvironment(
+    'FLUTTER_DEVICE_API_URL',
+    defaultValue: _primaryBackend,
+  );
+
   static String? overrideBaseUrl;
 
   String get _baseUrl {
     if (overrideBaseUrl != null) return overrideBaseUrl!;
-    if (kIsWeb) {
-      return '${apiUrl}/api';
-    } else {
-      // For emulators, 10.0.2.2 routes to host machine. For real devices, change to your LAN IP.
-      return '${defaultDeviceBase}/api';
-    }
+    final raw = kIsWeb ? webApiBase : deviceApiBase;
+    final sanitized = (raw.isEmpty ? _secondaryBackend : raw).replaceAll(RegExp(r'/+$'), '');
+    return '$sanitized/api';
   }
   String get baseUrl => _baseUrl;
 
@@ -550,7 +554,20 @@ class ApiService {
       headers: await _getHeaders(),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to delete user');
+      String message = 'Failed to delete user';
+      try {
+        final dynamic data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['detail'] != null) {
+          message = data['detail'].toString();
+        } else if (response.body.isNotEmpty) {
+          message = response.body;
+        }
+      } catch (_) {
+        if (response.body.isNotEmpty) {
+          message = response.body;
+        }
+      }
+      throw ServerException(message);
     }
   }
 

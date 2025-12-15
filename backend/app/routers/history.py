@@ -67,6 +67,8 @@ def export_sales_to_excel(
     
     sales_data = []
     for sale in sales_only:
+        requester_name = sale.requester.username if sale.requester else "Deleted user"
+        reviewer_name = sale.reviewer.username if sale.reviewer else "Deleted user"
         sales_data.append({
             "Date": sale.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             "Product_Name": sale.product.name if sale.product else "N/A",
@@ -76,8 +78,8 @@ def export_sales_to_excel(
             "Total_Amount": (abs(sale.quantity_change) * sale.product.price) if (sale.quantity_change and sale.product) else 0,
             "Buyer_Name": sale.buyer_name or "N/A",
             "Payment_Status": sale.payment_status.value if sale.payment_status else "N/A",
-            "Seller": sale.requester.username,
-            "Approved_By": sale.reviewer.username,
+            "Seller": requester_name,
+            "Approved_By": reviewer_name,
         })
     
     df = pd.DataFrame(sales_data)

@@ -14,8 +14,10 @@ BstocK is a comprehensive inventory management system designed for modern busine
 
 ## 🚀 Live Demo
 
-- **Frontend (Web App):** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
-- **Backend API:** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
+- **Backend API (Primary):** [https://bstockapi.ashreef.com](https://bstockapi.ashreef.com)
+- **Backend API (Failover):** [https://bstock-bv2k.onrender.com](https://bstock-bv2k.onrender.com)
+- **Frontend (Primary):** [https://bstock.ashreef.com](https://bstock.ashreef.com)
+- **Frontend (Failover):** [https://bstock-ashy.vercel.app](https://bstock-ashy.vercel.app)
 - **API Documentation:** [https://bstock-bv2k.onrender.com/docs](https://bstock-bv2k.onrender.com/docs)
 
 ## ✨ Features
@@ -138,7 +140,11 @@ BstocK/
    # Edit .env with your configuration
    ```
 
-5. Initialize the database:
+5. Configure the master account (required). The values of `MASTER_USERNAME` and
+   `MASTER_PASSWORD` in `.env` are used to auto-create a non-editable, non-deletable
+   root user every time the API boots. Make sure you change the defaults before deploying.
+
+6. Initialize the database (optional once the master account exists):
    ```bash
    # Set environment variables for admin user
    export ADMIN_USERNAME="admin"
@@ -148,10 +154,17 @@ BstocK/
    python -m app.seed
    ```
 
-6. Start the development server:
+7. Start the development server:
    ```bash
    uvicorn app.main:app --reload
    ```
+
+### Automated database migrations
+
+The backend now ships with Alembic migration scripts. Every time the API starts in a
+non-SQLite environment it automatically runs `alembic upgrade head` to bring the schema
+up to date (so existing data is preserved while new columns/constraints are applied).
+For local SQLite development you can continue to rely on `AUTO_CREATE_TABLES=true`.
 
 #### Frontend Setup
 1. Navigate to the frontend directory:
@@ -165,8 +178,8 @@ BstocK/
    ```
 
 3. Update API configuration:
-   - For Android: Update `android/app/src/main/AndroidManifest.xml`
-   - Set the backend URL to: `https://bstock-bv2k.onrender.com`
+   - For Android: Update `android/app/src/main/AndroidManifest.xml` if you need custom permissions.
+   - The production backend endpoints are `https://bstockapi.ashreef.com` (primary) and `https://bstock-bv2k.onrender.com` (failover). Use `--dart-define FLUTTER_DEVICE_API_URL=<url>` or `FLUTTER_WEB_API_URL=<url>` to target staging/local servers as needed.
 
 4. Run the Flutter application:
    ```bash
@@ -224,10 +237,10 @@ ENVIRONMENT=production
 ```
 
 #### Frontend (API Configuration)
-Update the API base URL in your Flutter app to point to the production backend:
+Update the API base URL in your Flutter app to point to the production backend. By default the app targets `https://bstockapi.ashreef.com`, with an automatic fallback to `https://bstock-bv2k.onrender.com`. You can override this at build time:
 ```dart
-// In your API service file
-static const String baseUrl = 'https://bstock-bv2k.onrender.com';
+// Example: use a local dev server when running the emulator
+flutter run --dart-define=FLUTTER_DEVICE_API_URL=http://10.0.2.2:8000
 ```
 
 ## 🚀 Deployment

@@ -62,7 +62,7 @@ class _ChangeHistoryScreenState extends State<ChangeHistoryScreen> {
                 final statusText = entry.status.name.toUpperCase();
                 final productName = entry.product?.name ??
                     (entry.action == ChangeRequestAction.delete ? 'Deleted Product' : 'Product Not Found');
-                final reviewerName = entry.reviewer?.username ?? 'N/A';
+                final reviewerName = entry.reviewer.username;
 
                 final Color color;
                 final IconData icon;

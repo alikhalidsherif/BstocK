@@ -1,0 +1,47 @@
+# Root level dockerignore for multi-service builds
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files (keep examples)
+.env
+!.env.example
+!backend/docker.env.example
+
+# Build artifacts
+build/
+dist/
+
+# Dependencies (will be installed in container)
+node_modules/
+backend/venv/
+
+# Flutter specific
+frontend/.dart_tool/
+frontend/.packages
+frontend/pubspec.lock
+frontend/build/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo

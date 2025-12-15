@@ -22,6 +22,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
+    is_master: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -78,7 +79,7 @@ class ChangeRequestCreate(ChangeRequestBase):
 
 class ChangeRequest(ChangeRequestCreate):
     id: int
-    requester: User
+    requester: Optional[User] = None
     product: Optional[Product] = None
     history_id: Optional[int] = None
 
@@ -90,8 +91,8 @@ class ChangeHistory(BaseModel):
     quantity_change: Optional[int] = None
     action: ChangeRequestAction
     status: ChangeRequestStatus
-    requester: User
-    reviewer: User
+    requester: Optional[User] = None
+    reviewer: Optional[User] = None
     timestamp: datetime
     buyer_name: Optional[str] = None
     payment_status: Optional[PaymentStatus] = None

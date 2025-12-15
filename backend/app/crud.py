@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from . import models, schemas, auth
+from .config import settings
 from datetime import datetime, timezone
 from .events import hub
 
@@ -19,6 +21,8 @@ def create_user(db: Session, user: schemas.UserCreate):
     return db_user
 
 def update_user(db: Session, user: models.User, user_in: schemas.UserUpdate):
+    if user.username == settings.MASTER_USERNAME:
+        raise ValueError("The master account cannot be modified.")
     update_data = user_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
@@ -28,8 +32,14 @@ def update_user(db: Session, user: models.User, user_in: schemas.UserUpdate):
     return user
 
 def delete_user(db: Session, user: models.User):
-    db.delete(user)
-    db.commit()
+    if user.username == settings.MASTER_USERNAME:
+        raise ValueError("The master account cannot be deleted.")
+    try:
+        db.delete(user)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
     return user
 
 # Product CRUD

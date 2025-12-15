@@ -41,10 +41,14 @@ class UserProvider with ChangeNotifier {
 
   Future<void> updateUserRole(int userId, UserRole role) async {
     try {
+      final targetIndex = _allUsers.indexWhere((u) => u.id == userId);
+      if (targetIndex != -1 && _allUsers[targetIndex].isMaster) {
+        throw Exception('Master account cannot be edited.');
+      }
       final updatedUser = await _apiService.updateUser(userId, role: role.toString().split('.').last);
-      final index = _allUsers.indexWhere((u) => u.id == userId);
-      if (index != -1) {
-        _allUsers[index] = updatedUser;
+      final replaceIndex = _allUsers.indexWhere((u) => u.id == userId);
+      if (replaceIndex != -1) {
+        _allUsers[replaceIndex] = updatedUser;
         notifyListeners();
       }
     } catch (e) {
@@ -54,11 +58,15 @@ class UserProvider with ChangeNotifier {
 
   Future<void> deleteUser(int userId) async {
     try {
+      final index = _allUsers.indexWhere((user) => user.id == userId);
+      if (index != -1 && _allUsers[index].isMaster) {
+        throw Exception('Master account cannot be deleted.');
+      }
       await _apiService.deleteUser(userId);
       _allUsers.removeWhere((user) => user.id == userId);
       notifyListeners();
     } catch (e) {
-      // Optionally re-throw or show a message to the user
+      rethrow;
     }
   }
 

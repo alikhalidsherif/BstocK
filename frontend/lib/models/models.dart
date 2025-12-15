@@ -5,18 +5,28 @@ class User {
   final int id;
   final String username;
   final UserRole role;
+  final bool isMaster;
 
-  User({
+  const User({
     required this.id,
     required this.username,
     required this.role,
+    this.isMaster = false,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.deletedPlaceholder() {
+    return const User(id: -1, username: 'Deleted user', role: UserRole.clerk);
+  }
+
+  factory User.fromJson(dynamic json) {
+    if (json == null) {
+      return User.deletedPlaceholder();
+    }
     return User(
-      id: json['id'],
-      username: json['username'],
+      id: json['id'] ?? -1,
+      username: json['username'] ?? 'Deleted user',
       role: _parseRole(json['role']),
+      isMaster: json['is_master'] ?? false,
     );
   }
 
@@ -137,7 +147,7 @@ class ChangeHistory {
   final ChangeRequestAction action;
   final ChangeRequestStatus status;
   final User requester;
-  final User? reviewer;
+  final User reviewer;
   final DateTime timestamp;
   final String? buyerName;
   final String? paymentStatus;
@@ -149,21 +159,29 @@ class ChangeHistory {
     required this.action,
     required this.status,
     required this.requester,
-    this.reviewer,
+    required this.reviewer,
     required this.timestamp,
     this.buyerName,
     this.paymentStatus,
   });
 
   factory ChangeHistory.fromJson(Map<String, dynamic> json) {
+    final requesterJson = json['requester'];
+    final reviewerJson = json['reviewer'];
     return ChangeHistory(
       id: json['id'],
       product: json['product'] != null ? Product.fromJson(json['product']) : null,
       quantityChange: json['quantity_change'],
-      action: ChangeRequestAction.values.firstWhere((e) => e.name == json['action'], orElse: () => ChangeRequestAction.add),
-      status: ChangeRequestStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => ChangeRequestStatus.pending),
-      requester: User.fromJson(json['requester']),
-      reviewer: json['reviewer'] != null ? User.fromJson(json['reviewer']) : null,
+      action: ChangeRequestAction.values.firstWhere(
+        (e) => e.name == json['action'],
+        orElse: () => ChangeRequestAction.add,
+      ),
+      status: ChangeRequestStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => ChangeRequestStatus.pending,
+      ),
+      requester: User.fromJson(requesterJson),
+      reviewer: reviewerJson != null ? User.fromJson(reviewerJson) : User.deletedPlaceholder(),
       timestamp: DateTime.parse(json['timestamp']),
       buyerName: json['buyer_name'],
       paymentStatus: json['payment_status'],

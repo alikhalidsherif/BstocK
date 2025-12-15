@@ -22,7 +22,7 @@ services:
       - key: AUTO_CREATE_TABLES
         value: "false"
       - key: CORS_ALLOW_ORIGINS
-        value: "https://my-flutter-app-placeholder.vercel.app"
+        value: "https://bstock.ashreef.com"
       - key: CORS_ALLOW_CREDENTIALS
         value: "false"
       - key: CORS_ALLOW_METHODS
