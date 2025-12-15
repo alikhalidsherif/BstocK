@@ -90,7 +90,16 @@ class Settings(BaseSettings):
     def CORS_ALLOW_ORIGINS(self) -> list[str]:
         if not self.CORS_ALLOW_ORIGINS_raw:
             return []
-        return [item.strip() for item in self.CORS_ALLOW_ORIGINS_raw.split(',') if item.strip()]
+        def _normalize(origin: str) -> str:
+            cleaned = origin.strip()
+            # Trailing slashes break exact origin matching in CORS checks.
+            return cleaned.rstrip("/")
+
+        return [
+            _normalize(item)
+            for item in self.CORS_ALLOW_ORIGINS_raw.split(',')
+            if item.strip()
+        ]
 
     @computed_field
     @property
