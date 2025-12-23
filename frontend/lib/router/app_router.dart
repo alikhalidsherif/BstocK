@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../main.dart';
 import '../providers/auth_provider.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
@@ -20,6 +21,7 @@ import 'package:bstock_app/screens/add_user_screen.dart';
 import 'package:bstock_app/screens/unpaid_requests_screen.dart';
 import '../screens/sales_screen.dart';
 import '../screens/archived_products_screen.dart';
+import 'package:bstock_app/features/splash/splash_screen.dart';
 
 class AppRouter {
   late final GoRouter router;
@@ -32,7 +34,7 @@ class AppRouter {
     router = GoRouter(
       navigatorKey: _rootNavigatorKey,
       refreshListenable: authProvider,
-      initialLocation: '/login',
+      initialLocation: '/splash',
       routes: <RouteBase>[
         ShellRoute(
           navigatorKey: _shellNavigatorKey,
@@ -61,6 +63,11 @@ class AppRouter {
               builder: (context, state) => const SalesScreen(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/splash',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const SplashScreen(),
         ),
         GoRoute(
           path: '/login',
@@ -144,15 +151,50 @@ class AppRouter {
         ),
       ],
       redirect: (BuildContext context, GoRouterState state) {
-        final bool loggedIn = authProvider.status == AuthStatus.authenticated;
+        final AuthStatus status = authProvider.status;
+        final bool loggedIn = status == AuthStatus.authenticated;
         final UserRole? userRole = authProvider.user?.role;
         final bool isAdmin = userRole == UserRole.admin;
 
         final bool isLoggingIn = state.matchedLocation == '/login';
+        final bool isSplash = state.matchedLocation == '/splash';
 
-        if (!loggedIn && !isLoggingIn) {
+        // ═══════════════════════════════════════════════════════════
+        // COLD START SPLASH LOGIC
+        // ═══════════════════════════════════════════════════════════
+        
+        // PHASE 1: First time - redirect to splash
+        if (!AppState.hasSplashBeenShown) {
+          AppState.hasSplashBeenShown = true;
+          return '/splash';
+        }
+        
+        // PHASE 2: Splash is showing - block ALL redirects until animation completes
+        // This prevents auth changes from navigating away prematurely
+        if (!AppState.splashAnimationComplete) {
+          // Always stay on or go to splash while animation is running
+          return isSplash ? null : '/splash';
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // NORMAL AUTH ROUTING (after splash animation completes)
+        // ═══════════════════════════════════════════════════════════
+        
+        // If still on splash after animation complete, redirect based on auth
+        if (isSplash) {
+          return loggedIn ? '/' : '/login';
+        }
+        
+        // Wait for auth to initialize before redirecting
+        if (status == AuthStatus.uninitialized) {
+          return null;
+        }
+
+        if (!loggedIn) {
+          if (isLoggingIn) return null;
           return '/login';
         }
+
         if (loggedIn && isLoggingIn) {
           return '/';
         }

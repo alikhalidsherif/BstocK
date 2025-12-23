@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api_service.dart';
 import '../models/models.dart';
-import 'package:flutter/foundation.dart';
 
 enum SortType {
   none,
@@ -216,8 +215,7 @@ class ProductProvider with ChangeNotifier {
   Future<Product?> fetchProductByBarcode(String barcode) async {
     try {
       return await _apiService.getProductByBarcode(barcode);
-    } catch (e) {
-      debugPrint('Error fetching product by barcode: $e');
+    } catch (_) {
       return null;
     }
   }

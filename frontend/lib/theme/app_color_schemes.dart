@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 class AppColorSchemes {
   static const ColorScheme light = ColorScheme(
     brightness: Brightness.light,
-    primary: Color(0xFF6F5BFF),
+    primary: Color(0xFF322B8C),
     onPrimary: Color(0xFFFFFFFF),
-    primaryContainer: Color(0xFFE6E0FF),
-    onPrimaryContainer: Color(0xFF1D0C62),
+    primaryContainer: Color(0xFFE0E0FF),
+    onPrimaryContainer: Color(0xFF05006D),
     secondary: Color(0xFF0EA5E9),
     onSecondary: Color(0xFFFFFFFF),
     secondaryContainer: Color(0xFFCDEFFF),

@@ -1,5 +1,5 @@
 name: bstock_app
-description: "A new Flutter project."
+description: "BstocK - Inventory Management System"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -26,6 +26,35 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
-  uses-material-design: true 
+  uses-material-design: true
+  assets:
+    - assets/brand/
+  fonts:
+    - family: MyFlutterApp
+      fonts:
+        - asset: assets/fonts/MyFlutterApp.ttf
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/brand/bstock_icon_dark_1024.png" # Main Fallback
+
+  # Android Adaptive Icons
+  adaptive_icon_background: "#0F1426" # Deep Navy (Matches bstock_bg_dark.png)
+  adaptive_icon_foreground: "assets/brand/bstock_logo_dark_transparent_1024.png"
+  adaptive_icon_monochrome: "assets/brand/bstock_logo_mono.png" # Themed Support
+
+  # iOS 18+ Dark Mode Support
+  image_path_ios_dark_transparent: "assets/brand/bstock_logo_dark_transparent_1024.png"
+  image_path_ios_tinted_grayscale: "assets/brand/bstock_logo_mono.png"
+
+  web:
+    generate: true
+    image_path: "assets/brand/bstock_icon_dark_1024.png"
+    background_color: "#0F1426"
+    theme_color: "#322B8C"

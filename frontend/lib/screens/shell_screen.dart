@@ -3,6 +3,7 @@ import 'package:bstock_app/providers/auth_provider.dart';
 import 'package:bstock_app/providers/history_provider.dart';
 import 'package:bstock_app/widgets/app_drawer.dart';
 import 'package:bstock_app/widgets/decorated_scaffold.dart';
+import 'package:bstock_app/my_flutter_app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,25 @@ class ShellScreen extends StatelessWidget {
 
     return DecoratedScaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) {
+            final Color iconColor =
+                Theme.of(context).colorScheme.onSurface;
+
+            return IconButton(
+              tooltip: 'Menu',
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: Hero(
+                tag: 'sidebar_logo_hero',
+                child: Icon(
+                  MyFlutterApp.bstock_font,
+                  size: 26,
+                  color: iconColor,
+                ),
+              ),
+            );
+          },
+        ),
         title: Text(title),
         actions: [
           // Show unpaid badge on Home

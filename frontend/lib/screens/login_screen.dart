@@ -1,3 +1,4 @@
+import 'package:bstock_app/widgets/ashreef_footer.dart';
 import 'package:bstock_app/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -87,6 +88,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isKeyboardVisible = mediaQuery.viewInsets.bottom > 0;
+    final double screenHeight = mediaQuery.size.height;
+    final double logoHeightFactor = isKeyboardVisible ? 0.12 : 0.22;
+    final double dynamicLogoHeight =
+        (screenHeight * logoHeightFactor).clamp(80.0, 180.0);
+    final String logoAsset = isDark
+        ? 'assets/brand/bstock_logo_dark_sm.png'
+        : 'assets/brand/bstock_logo_light_sm.png';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login'),
@@ -97,46 +109,79 @@ class _LoginScreenState extends State<LoginScreen> {
               )
             : null,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  'Welcome to BstocK',
-                  style: Theme.of(context).textTheme.headlineMedium,
+      body: Stack(
+        children: [
+          // Main content - scrollable form
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                top: 16.0,
+                bottom: 80.0, // Extra padding for footer space
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOutCubic,
+                      height: dynamicLogoHeight,
+                      child: Image.asset(
+                        logoAsset,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    SizedBox(height: isKeyboardVisible ? 16 : 40),
+                    Text(
+                      'Welcome to BstocK',
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(labelText: 'Username'),
+                      validator: (value) =>
+                          value!.isEmpty ? 'Please enter your username' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordController,
+                      decoration: const InputDecoration(labelText: 'Password'),
+                      obscureText: true,
+                      validator: (value) =>
+                          value!.isEmpty ? 'Please enter your password' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    if (_isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      CustomButton(
+                        onPressed: _login,
+                        text: 'Login',
+                        icon: Icons.login,
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'Username'),
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter your username' : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  obscureText: true,
-                  validator: (value) =>
-                      value!.isEmpty ? 'Please enter your password' : null,
-                ),
-                const SizedBox(height: 24),
-                if (_isLoading)
-                  const CircularProgressIndicator()
-                else
-                  CustomButton(
-                    onPressed: _login,
-                    text: 'Login',
-                    icon: Icons.login,
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
+
+          // Footer - pinned to bottom, hidden when keyboard is visible
+          if (!isKeyboardVisible)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                child: Center(
+                  child: const AshReefFooter(style: FooterStyle.simple),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

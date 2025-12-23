@@ -9,6 +9,17 @@ import 'providers/auth_provider.dart';
 import 'providers/change_request_provider.dart';
 import 'router/app_router.dart';
 
+/// Global state to track splash screen behavior during cold start.
+/// This ensures splash only shows once per app launch from terminated state.
+class AppState {
+  /// Whether the splash screen has been shown this session
+  static bool hasSplashBeenShown = false;
+
+  /// Whether the splash animation has completed and navigation is allowed
+  /// This prevents the router from redirecting away before splash finishes
+  static bool splashAnimationComplete = false;
+}
+
 void main() {
   runApp(
     MultiProvider(
@@ -25,14 +36,33 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  AppRouter? _appRouter;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Create the router ONCE when dependencies are available
+    // It will use refreshListenable to respond to auth changes
+    _appRouter ??= AppRouter(context.read<AuthProvider>());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    // Only listen to theme changes for rebuilding the MaterialApp
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final appRouter = AppRouter(authProvider);
+
+    // Wait for router to be initialized
+    if (_appRouter == null) {
+      return const SizedBox.shrink();
+    }
 
     return MaterialApp.router(
       title: 'BstocK',
@@ -40,7 +70,7 @@ class MyApp extends StatelessWidget {
       theme: AppThemes.lightTheme,
       darkTheme: AppThemes.darkTheme,
       themeMode: themeProvider.themeMode,
-      routerConfig: appRouter.router,
+      routerConfig: _appRouter!.router,
     );
   }
-} 
+}

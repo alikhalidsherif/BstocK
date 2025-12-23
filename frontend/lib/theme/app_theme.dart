@@ -83,63 +83,63 @@ class AppThemes {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
-          minimumSize: MaterialStateProperty.all(const Size(48, 48)),
-          shape: MaterialStateProperty.all(
+          minimumSize: WidgetStateProperty.all(const Size(48, 48)),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          padding: MaterialStateProperty.all(
+          padding: WidgetStateProperty.all(
             const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
-          textStyle: MaterialStateProperty.all(textTheme.labelLarge),
+          textStyle: WidgetStateProperty.all(textTheme.labelLarge),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ButtonStyle(
-          minimumSize: MaterialStateProperty.all(const Size(48, 48)),
-          backgroundColor: MaterialStateProperty.resolveWith(
-            (states) => states.contains(MaterialState.disabled)
+          minimumSize: WidgetStateProperty.all(const Size(48, 48)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled)
                 ? colors.surfaceVariant
                 : colors.primary,
           ),
-          foregroundColor: MaterialStateProperty.resolveWith(
-            (states) => states.contains(MaterialState.disabled)
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled)
                 ? colors.onSurfaceVariant
                 : colors.onPrimary,
           ),
-          elevation: MaterialStateProperty.all(0),
-          shape: MaterialStateProperty.all(
+          elevation: WidgetStateProperty.all(0),
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          padding: MaterialStateProperty.all(
+          padding: WidgetStateProperty.all(
             const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
-          textStyle: MaterialStateProperty.all(textTheme.labelLarge),
+          textStyle: WidgetStateProperty.all(textTheme.labelLarge),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: MaterialStateProperty.all(colors.primary),
-          textStyle: MaterialStateProperty.all(textTheme.labelLarge),
+          foregroundColor: WidgetStateProperty.all(colors.primary),
+          textStyle: WidgetStateProperty.all(textTheme.labelLarge),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
-          side: MaterialStateProperty.resolveWith(
+          side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
-              color: states.contains(MaterialState.disabled)
+              color: states.contains(WidgetState.disabled)
                   ? colors.outline.withOpacity(0.4)
                   : colors.primary,
               width: 1.2,
             ),
           ),
-          shape: MaterialStateProperty.all(
+          shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          padding: MaterialStateProperty.all(
+          padding: WidgetStateProperty.all(
             const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
-          textStyle: MaterialStateProperty.all(textTheme.labelLarge),
-          foregroundColor: MaterialStateProperty.all(colors.primary),
+          textStyle: WidgetStateProperty.all(textTheme.labelLarge),
+          foregroundColor: WidgetStateProperty.all(colors.primary),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -188,10 +188,10 @@ class AppThemes {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       scrollbarTheme: ScrollbarThemeData(
-        thumbColor: MaterialStateProperty.all(
+        thumbColor: WidgetStateProperty.all(
           colors.primary.withOpacity(0.6),
         ),
-        trackColor: MaterialStateProperty.all(colors.surfaceVariant),
+        trackColor: WidgetStateProperty.all(colors.surfaceVariant),
         radius: const Radius.circular(999),
       ),
       iconTheme: IconThemeData(color: colors.primary),
