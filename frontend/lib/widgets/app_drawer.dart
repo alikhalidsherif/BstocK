@@ -40,16 +40,16 @@ class AppDrawer extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: headerTextColor,
                 ),
-              ),
-            ),
+                      ),
+                    ),
             accountName: Text(
               user?.username ?? 'User',
-              style: TextStyle(
+                      style: TextStyle(
                 color: headerTextColor,
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
             accountEmail: Text(
               _getRoleDisplay(user?.role),
               style: TextStyle(
@@ -62,7 +62,7 @@ class AppDrawer extends StatelessWidget {
           // ─────────────────────────────────────────────────────────
           // BODY: Navigation Items
           // ─────────────────────────────────────────────────────────
-          Expanded(
+                Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
@@ -82,10 +82,10 @@ class AppDrawer extends StatelessWidget {
                   ),
                   title: Text(
                     'Logout',
-                    style: TextStyle(
+                          style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
+                          ),
+                        ),
                   onTap: () {
                     Provider.of<AuthProvider>(context, listen: false).logout();
                   },
@@ -107,7 +107,7 @@ class AppDrawer extends StatelessWidget {
                   width: 1,
                 ),
               ),
-            ),
+          ),
             child: SafeArea(
               top: false,
               child: const AshReefFooter(style: FooterStyle.fullProduct),

@@ -8,9 +8,29 @@
   <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
 </div>
 
+<div align="center">
+  <img src="frontend/assets/brand/bstock_logo_light_sm.png" alt="BstocK light logo" height="96" />
+  <img src="frontend/assets/brand/bstock_logo_dark_sm.png" alt="BstocK dark logo" height="96" />
+</div>
+
+<div align="center">
+  <img src="frontend/assets/brand/ashreef_white.png" alt="AshReef Labs logo" height="64" style="background-color:#0F1426;padding:12px 16px;border-radius:14px;" />
+</div>
+
+<div align="center">
+  <sub><strong>BstocK</strong> — designed by AshReef Labs</sub>
+</div>
+
 ## 📋 Overview
 
 BstocK is a comprehensive inventory management system designed for modern businesses. Built with cutting-edge technologies, it provides real-time inventory tracking, user management, and seamless mobile/web access for efficient stock operations.
+
+## 🎨 Brand System
+
+- **Primary marks:** Official PNG/SVG exports (light, dark, mono, icon) live in `frontend/assets/brand/`. See `BRAND_IDENTITY.md` for the funnel/bin monogram story, spacing, and color pairing guidance.
+- **In-app icons:** `frontend/lib/my_flutter_app_icons.dart` exposes `AppIcons.bstock` and `AppIcons.ashreef`, the same glyphs used in `AshReefFooter` for attribution across splash, login, and navigation surfaces.
+- **Credits:** The product is “BstocK by AshReef Labs.” Use the simple or full footer styles from `frontend/lib/widgets/ashreef_footer.dart` to match splash/login vs. drawer contexts.
+- **Updating assets:** After tweaking logo files or icon fonts, run `flutter pub get` so the regenerated `MyFlutterApp.ttf` stays in sync with the Dart icon helpers.
 
 ## 🚀 Live Demo
 
@@ -103,6 +123,8 @@ BstocK/
 │   ├── requirements.txt     # Python dependencies
 │   └── Dockerfile           # Container configuration
 │
+├── docs/                    # Deployment playbook & infra guides
+├── BRAND_IDENTITY.md        # Visual identity system
 └── docker-compose.yml       # Multi-service orchestration
 ```
 
@@ -287,6 +309,11 @@ flutter test
 - Lazy loading of data
 - WebSocket connection pooling
 
+## 📚 Documentation Hub
+
+- [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) – consolidated instructions for Docker, home-lab setups, Render/Heroku/Railway/DigitalOcean, Cloudflare + Nginx Proxy Manager, and the Flutter build automation script.
+- [`BRAND_IDENTITY.md`](BRAND_IDENTITY.md) – all logo specs, palette tokens, export sizes, and implementation notes for ensuring AshReef Labs + BstocK visuals stay consistent.
+
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -321,5 +348,9 @@ For support and questions:
 
 <div align="center">
   <p>Built with ❤️ using Flutter and FastAPI</p>
-  <p>© 2024 BstocK. All rights reserved.</p>
+  <p>
+    <img src="frontend/assets/brand/bstock_logo_mono.png" alt="BstocK icon" height="28" style="vertical-align:middle;margin-right:8px;" />
+    <strong>BstocK</strong> by AshReef Labs — © 2025. All rights reserved.
+    <img src="frontend/assets/brand/ashreef_white.png" alt="AshReef Labs logo" height="32" style="vertical-align:middle;margin-left:8px;background-color:#0F1426;padding:6px 10px;border-radius:10px;" />
+  </p>
 </div>

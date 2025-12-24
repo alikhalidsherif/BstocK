@@ -1,5 +1,7 @@
 ## BstocK Brand Identity
 
+> BstocK is a product by **AshReef Labs**. Every outward-facing surface should reinforce the “BstocK by AshReef Labs” pairing using the lockups and footer patterns documented below.
+
 ### Logo Concept — “Funnel & Bin” Monogram
 - **Visual:** A downward “V” (input flow) above a rounded “M” (storage bin).
 - **Hidden meaning:** Rotating 90° suggests the letters **B** and **K**.
@@ -27,4 +29,9 @@
 - App theme alignment: The values above match `AppColorSchemes` (light: `primary 0xFF6F5BFF`, `secondary 0xFF0EA5E9`; dark: `primary 0xFFCFD4FF`, `secondary 0xFF63D3FF`, background `0xFF0F1426`).
 - Exports: Provide SVG + PNGs at 512/192/96/48. Use maskable variants for PWA (`frontend/web/manifest.json`).
 - Flutter: Reference assets in `pubspec.yaml` under `flutter/assets` and update launcher icons as needed.
+
+### Attribution Lockups
+- Use the **simple footer** (`Designed by AshReef Labs + icon`) for splash/login states.
+- Use the **full footer** (`[BstocK icon] BstocK by AshReef Labs [icon]`) anywhere persistent (drawers, marketing tiles, README footer).
+- For external decks or PDFs, pair the BstocK icon/wordmark on the left and the AshReef Labs icon or signature on the right, separated by “by” in Roboto 12–14pt, 60% opacity.
 
